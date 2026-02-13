@@ -886,11 +886,11 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
   <div style="margin-bottom:12px;font-size:.8rem;color:var(--dm);">👑 OWNER: <span id="admin-name" style="color:var(--owner);font-weight:700;"></span></div>
 
   <div class="admin-tabs">
-    <button class="admin-tab active" onclick="switchAdminTab('members')">👥 Membri</button>
-    <button class="admin-tab" onclick="switchAdminTab('categories')">📁 Categorii</button>
-    <button class="admin-tab" onclick="switchAdminTab('subcategories')">📂 Subcategorii</button>
-    <button class="admin-tab" onclick="switchAdminTab('data')">📦 Date</button>
-    <button class="admin-tab" onclick="switchAdminTab('tools')">🔧 Unelte</button>
+    <button class="admin-tab active" onclick="switchAdminTab('members', this)">👥 Membri</button>
+    <button class="admin-tab" onclick="switchAdminTab('categories', this)">📁 Categorii</button>
+    <button class="admin-tab" onclick="switchAdminTab('subcategories', this)">📂 Subcategorii</button>
+    <button class="admin-tab" onclick="switchAdminTab('data', this)">📦 Date</button>
+    <button class="admin-tab" onclick="switchAdminTab('tools', this)">🔧 Unelte</button>
   </div>
 
   <div class="admin-section active" id="admin-members">
@@ -1225,15 +1225,31 @@ let MATARME = APP_DATA.MATARME;
 let MASA = APP_DATA.MASA;
 let LOC = APP_DATA.LOC;
 
+/* ═══════════════════════════════════════════════════════════════
+   ███  SISTEM MEMBRII - CORECTAT  ███
+   ═══════════════════════════════════════════════════════════════ */
 
 function loadMembers() {
   const saved = localStorage.getItem('craft_members');
-  return saved ? JSON.parse(saved) : {};
-}
-function saveMembers() {
-  localStorage.setItem('craft_members', JSON.stringify(members));
+  if (!saved) return {};
+  try {
+    return JSON.parse(saved);
+  } catch(e) {
+    console.error('Eroare la încărcarea membrilor:', e);
+    return {};
+  }
 }
 
+function saveMembers() {
+  try {
+    localStorage.setItem('craft_members', JSON.stringify(members));
+    console.log('Membri salvați:', Object.keys(members).length);
+  } catch(e) {
+    console.error('Eroare la salvarea membrilor:', e);
+  }
+}
+
+// Inițializare membri
 let members = loadMembers();
 let currentMemberFilter = 'all';
 let memberSearchQuery = '';
@@ -1243,8 +1259,19 @@ let restrictingMemberId = null;
    ███  SISTEM AUTHENTIFICARE - OWNER + MEMBRI  ███
    ═══════════════════════════════════════════════════════════════ */
 
-let currentUser = JSON.parse(localStorage.getItem('craft_current_user') || 'null');
-let accessLog = JSON.parse(localStorage.getItem('craft_access_log') || '[]');
+let currentUser = null;
+try {
+  currentUser = JSON.parse(localStorage.getItem('craft_current_user') || 'null');
+} catch(e) {
+  currentUser = null;
+}
+
+let accessLog = [];
+try {
+  accessLog = JSON.parse(localStorage.getItem('craft_access_log') || '[]');
+} catch(e) {
+  accessLog = [];
+}
 
 function loginWithDiscord() {
   const params = new URLSearchParams({
@@ -1264,7 +1291,12 @@ function loginOwner() {
 function handleDiscordCallback() {
   const fragment = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = fragment.get('access_token');
-  if (fragment.get('error')) { alert('Eroare Discord: ' + fragment.get('error')); return; }
+  
+  if (fragment.get('error')) { 
+    alert('Eroare Discord: ' + fragment.get('error')); 
+    return; 
+  }
+  
   if (!accessToken) return;
   
   const loginType = localStorage.getItem('craft_login_type') || 'member';
@@ -1273,7 +1305,10 @@ function handleDiscordCallback() {
   fetch('https://discord.com/api/users/@me', {
     headers: { 'Authorization': `Bearer ${accessToken}` }
   })
-  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(r => { 
+    if (!r.ok) throw new Error('HTTP ' + r.status); 
+    return r.json(); 
+  })
   .then(user => {
     const avatar = user.avatar
       ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
@@ -1283,10 +1318,26 @@ function handleDiscordCallback() {
     
     // OWNER
     if (user.id === OWNER_ID) {
-      currentUser = { id:user.id, username:user.username, avatar, approved:true, isOwner:true, isAdmin:true, loginTime:new Date().toISOString() };
-      accessLog.push({ time:new Date().toISOString(), user:user.username, id:user.id, type:'owner' });
+      currentUser = {
+        id: user.id,
+        username: user.username,
+        avatar: avatar,
+        approved: true,
+        isOwner: true,
+        isAdmin: true,
+        loginTime: new Date().toISOString()
+      };
+      
+      accessLog.push({ 
+        time: new Date().toISOString(), 
+        user: user.username, 
+        id: user.id, 
+        type: 'owner' 
+      });
+      
       localStorage.setItem('craft_access_log', JSON.stringify(accessLog));
       localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
+      
       showMainApp();
       showNotification('👑 Bine ai venit, OWNER!');
       return;
@@ -1294,27 +1345,55 @@ function handleDiscordCallback() {
     
     // Tried owner login but not owner
     if (loginType === 'owner') {
-      currentUser = { id:user.id, username:user.username, avatar, approved:false, isOwner:false };
+      currentUser = {
+        id: user.id,
+        username: user.username,
+        avatar: avatar,
+        approved: false,
+        isOwner: false
+      };
       localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
       showOwnerDenied();
       return;
     }
     
     // Check blacklist
-    const md = members[user.id];
-    if (md && md.blacklisted) {
-      currentUser = { id:user.id, username:user.username, avatar, approved:false, isOwner:false, blacklisted:true };
+    if (members[user.id] && members[user.id].blacklisted) {
+      currentUser = {
+        id: user.id,
+        username: user.username,
+        avatar: avatar,
+        approved: false,
+        isOwner: false,
+        blacklisted: true
+      };
       localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
       showBlacklisted();
       return;
     }
     
     // Check restricted
-    if (md && md.restricted) {
-      if (!md.restrictedPermanent && new Date(md.restrictedUntil) <= new Date()) {
-        md.restricted = false; md.restrictedUntil = null; md.restrictedPermanent = false; saveMembers();
+    if (members[user.id] && members[user.id].restricted) {
+      const restrictedUntil = members[user.id].restrictedUntil;
+      const restrictedPermanent = members[user.id].restrictedPermanent;
+      
+      if (!restrictedPermanent && restrictedUntil && new Date(restrictedUntil) <= new Date()) {
+        // Restricția a expirat, șterge restricția
+        members[user.id].restricted = false;
+        members[user.id].restrictedUntil = null;
+        members[user.id].restrictedPermanent = false;
+        saveMembers();
       } else {
-        currentUser = { id:user.id, username:user.username, avatar, approved:false, isOwner:false, restricted:true, restrictedUntil:md.restrictedUntil, restrictedPermanent:md.restrictedPermanent };
+        currentUser = {
+          id: user.id,
+          username: user.username,
+          avatar: avatar,
+          approved: false,
+          isOwner: false,
+          restricted: true,
+          restrictedUntil: restrictedUntil,
+          restrictedPermanent: restrictedPermanent
+        };
         localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
         showRestricted();
         return;
@@ -1322,42 +1401,92 @@ function handleDiscordCallback() {
     }
     
     // Check approved + not expired
-    if (md && md.approved && new Date(md.expiresAt) > new Date()) {
-      currentUser = { id:user.id, username:user.username, avatar, approved:true, isOwner:false, isAdmin:md.isAdmin||false, expiresAt:md.expiresAt, loginTime:new Date().toISOString() };
-      md.lastLogin = new Date().toISOString();
-      md.loginCount = (md.loginCount||0)+1;
-      md.username = user.username; md.avatar = avatar;
-      saveMembers();
-      accessLog.push({ time:new Date().toISOString(), user:user.username, id:user.id, type:'member' });
-      localStorage.setItem('craft_access_log', JSON.stringify(accessLog));
-      localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
-      showMainApp();
-      showNotification('✅ Bine ai venit, ' + user.username + '!');
-      return;
+    if (members[user.id] && members[user.id].approved) {
+      const expiresAt = members[user.id].expiresAt;
+      if (expiresAt && new Date(expiresAt) > new Date()) {
+        // Membru activ
+        currentUser = {
+          id: user.id,
+          username: user.username,
+          avatar: avatar,
+          approved: true,
+          isOwner: false,
+          isAdmin: members[user.id].isAdmin || false,
+          expiresAt: expiresAt,
+          loginTime: new Date().toISOString()
+        };
+        
+        // Actualizează datele membrului
+        members[user.id].lastLogin = new Date().toISOString();
+        members[user.id].loginCount = (members[user.id].loginCount || 0) + 1;
+        members[user.id].username = user.username;
+        members[user.id].avatar = avatar;
+        saveMembers();
+        
+        accessLog.push({
+          time: new Date().toISOString(),
+          user: user.username,
+          id: user.id,
+          type: 'member'
+        });
+        localStorage.setItem('craft_access_log', JSON.stringify(accessLog));
+        localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
+        
+        showMainApp();
+        showNotification('✅ Bine ai venit, ' + user.username + '!');
+        return;
+      } else {
+        // Acces expirat
+        members[user.id].approved = false;
+        members[user.id].status = 'expired';
+        saveMembers();
+      }
     }
     
-    // Expired access
-    if (md && md.approved && new Date(md.expiresAt) <= new Date()) {
-      md.approved = false; md.status = 'expired'; saveMembers();
-    }
-    
-    // New or pending member
+    // New or pending member - ÎNREGISTREAZĂ MEMBRUL NOU
     if (!members[user.id]) {
-      members[user.id] = { id:user.id, username:user.username, avatar, joinedAt:new Date().toISOString(), approved:false, isAdmin:false, blacklisted:false, restricted:false, status:'pending', loginCount:1, lastLogin:new Date().toISOString() };
+      members[user.id] = {
+        id: user.id,
+        username: user.username,
+        avatar: avatar,
+        joinedAt: new Date().toISOString(),
+        approved: false,
+        isAdmin: false,
+        blacklisted: false,
+        restricted: false,
+        status: 'pending',
+        loginCount: 1,
+        lastLogin: new Date().toISOString()
+      };
     } else {
+      // Membru existent, actualizează datele
       members[user.id].username = user.username;
       members[user.id].avatar = avatar;
       members[user.id].lastLogin = new Date().toISOString();
-      members[user.id].loginCount = (members[user.id].loginCount||0)+1;
-      if (!members[user.id].blacklisted && !members[user.id].restricted) members[user.id].status = 'pending';
+      members[user.id].loginCount = (members[user.id].loginCount || 0) + 1;
+      
+      if (!members[user.id].blacklisted && !members[user.id].restricted) {
+        members[user.id].status = 'pending';
+      }
     }
+    
     saveMembers();
     
-    currentUser = { id:user.id, username:user.username, avatar, approved:false, isOwner:false };
+    currentUser = {
+      id: user.id,
+      username: user.username,
+      avatar: avatar,
+      approved: false,
+      isOwner: false
+    };
     localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
+    
     showPendingApproval();
   })
-  .catch(err => { console.error(err); alert('Eroare Discord: ' + err.message); });
+  .catch(err => { 
+    console.error('Eroare Discord:', err); 
+    alert('Eroare Discord: ' + err.message); 
+  });
 }
 
 function showOwnerDenied() {
@@ -1396,11 +1525,14 @@ function showRestricted() {
   $('pending-id').textContent = 'ID: ' + currentUser.id;
   $('pending-box').className = 'pending-box denied';
   $('pending-title').textContent = '⛔ ACCES RESTRICTIONAT';
+  
   if (currentUser.restrictedPermanent) {
     $('pending-message').innerHTML = 'Accesul tau a fost <b style="color:var(--r)">restrictionat permanent</b>.';
-  } else {
+  } else if (currentUser.restrictedUntil) {
     const until = new Date(currentUser.restrictedUntil).toLocaleDateString('ro-RO',{day:'2-digit',month:'long',year:'numeric'});
     $('pending-message').innerHTML = 'Accesul tau a fost <b style="color:var(--r)">restrictionat</b>.<br>Restrictia expira pe: <b style="color:var(--s)">' + until + '</b>';
+  } else {
+    $('pending-message').innerHTML = 'Accesul tau a fost <b style="color:var(--r)">restrictionat</b>.';
   }
 }
 
@@ -1418,21 +1550,62 @@ function showPendingApproval() {
 }
 
 function checkAccess() {
-  if (!currentUser) { showLoginScreen(); return; }
-  if (currentUser.id === OWNER_ID && currentUser.isOwner) { showMainApp(); return; }
+  if (!currentUser) { 
+    showLoginScreen(); 
+    return; 
+  }
+  
+  if (currentUser.id === OWNER_ID && currentUser.isOwner) { 
+    showMainApp(); 
+    return; 
+  }
+  
   const md = members[currentUser.id];
-  if (!md) { showPendingApproval(); return; }
-  if (md.blacklisted) { currentUser.blacklisted=true; localStorage.setItem('craft_current_user',JSON.stringify(currentUser)); showBlacklisted(); return; }
+  
+  if (!md) { 
+    showPendingApproval(); 
+    return; 
+  }
+  
+  if (md.blacklisted) { 
+    currentUser.blacklisted = true; 
+    localStorage.setItem('craft_current_user', JSON.stringify(currentUser)); 
+    showBlacklisted(); 
+    return; 
+  }
+  
   if (md.restricted) {
-    if (!md.restrictedPermanent && new Date(md.restrictedUntil) <= new Date()) { md.restricted=false; saveMembers(); }
-    else { currentUser.restricted=true; currentUser.restrictedUntil=md.restrictedUntil; currentUser.restrictedPermanent=md.restrictedPermanent; localStorage.setItem('craft_current_user',JSON.stringify(currentUser)); showRestricted(); return; }
+    const restrictedUntil = md.restrictedUntil;
+    const restrictedPermanent = md.restrictedPermanent;
+    
+    if (!restrictedPermanent && restrictedUntil && new Date(restrictedUntil) <= new Date()) { 
+      md.restricted = false; 
+      saveMembers(); 
+    } else { 
+      currentUser.restricted = true; 
+      currentUser.restrictedUntil = restrictedUntil; 
+      currentUser.restrictedPermanent = restrictedPermanent; 
+      localStorage.setItem('craft_current_user', JSON.stringify(currentUser)); 
+      showRestricted(); 
+      return; 
+    }
   }
-  if (md.approved && new Date(md.expiresAt) > new Date()) {
-    currentUser.approved=true; currentUser.isAdmin=md.isAdmin||false; currentUser.expiresAt=md.expiresAt;
-    localStorage.setItem('craft_current_user',JSON.stringify(currentUser));
-    showMainApp(); return;
+  
+  if (md.approved && md.expiresAt && new Date(md.expiresAt) > new Date()) {
+    currentUser.approved = true; 
+    currentUser.isAdmin = md.isAdmin || false; 
+    currentUser.expiresAt = md.expiresAt;
+    localStorage.setItem('craft_current_user', JSON.stringify(currentUser));
+    showMainApp(); 
+    return;
   }
-  if (md.approved) { md.approved=false; md.status='expired'; saveMembers(); }
+  
+  if (md.approved) { 
+    md.approved = false; 
+    md.status = 'expired'; 
+    saveMembers(); 
+  }
+  
   showPendingApproval();
 }
 
@@ -1463,22 +1636,31 @@ function showMainApp() {
     $('user-display-name').style.color = 'var(--s)';
     $('user-avatar').style.borderColor = 'var(--s)';
     $('admin-toggle').style.display = 'none';
-    if (currentUser.expiresAt) { const d=Math.ceil((new Date(currentUser.expiresAt)-new Date())/(1e3*60*60*24)); $('user-expiry-info').textContent='⏰ '+d+' zile'; }
+    if (currentUser.expiresAt) { 
+      const d = Math.ceil((new Date(currentUser.expiresAt) - new Date()) / (1e3 * 60 * 60 * 24)); 
+      $('user-expiry-info').textContent = '⏰ ' + d + ' zile'; 
+    }
   } else {
     $('user-role-badge').innerHTML = '<span class="member-badge">👤 MEMBRU</span>';
     $('user-display-name').style.color = '#5865F2';
     $('user-avatar').style.borderColor = '#5865F2';
     $('admin-toggle').style.display = 'none';
     if (currentUser.expiresAt) {
-      const d=Math.ceil((new Date(currentUser.expiresAt)-new Date())/(1e3*60*60*24));
-      $('user-expiry-info').textContent='⏰ '+d+' zile';
-      $('user-expiry-info').style.color = d<=3?'var(--r)':d<=7?'#ffc107':'var(--dm)';
+      const d = Math.ceil((new Date(currentUser.expiresAt) - new Date()) / (1e3 * 60 * 60 * 24));
+      $('user-expiry-info').textContent = '⏰ ' + d + ' zile';
+      $('user-expiry-info').style.color = d <= 3 ? 'var(--r)' : d <= 7 ? '#ffc107' : 'var(--dm)';
     }
   }
-  renderMainCategories(); renderDynamicPanels();
+  
+  renderMainCategories(); 
+  renderDynamicPanels();
 }
 
-function logout() { currentUser=null; localStorage.removeItem('craft_current_user'); showLoginScreen(); }
+function logout() { 
+  currentUser = null; 
+  localStorage.removeItem('craft_current_user'); 
+  showLoginScreen(); 
+}
 
 /* ═══════════════════════════════════════════════════════════════
    ███  ADMIN PANEL  ███
@@ -1488,150 +1670,320 @@ function toggleAdmin() {
   const p = $('admin-panel');
   if (p.style.display === 'none' || !p.style.display) {
     p.style.display = 'block';
-    renderMemberList(); renderCategoriesList(); renderSubcategoriesList(); renderDataTabs(); renderDataList(); updateStats();
-  } else p.style.display = 'none';
+    renderMemberList(); 
+    renderCategoriesList(); 
+    renderSubcategoriesList(); 
+    renderDataTabs(); 
+    renderDataList(); 
+    updateStats();
+  } else {
+    p.style.display = 'none';
+  }
 }
 
-function switchAdminTab(tab) {
-  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-  $('admin-'+tab).classList.add('active');
-  if(tab==='members') renderMemberList();
-  if(tab==='categories') renderCategoriesList();
-  if(tab==='subcategories') renderSubcategoriesList();
-  if(tab==='data'){renderDataTabs();renderDataList();}
+// ✅ CORECTAT: Adăugat parametrul clickedBtn
+function switchAdminTab(tab, clickedBtn) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  clickedBtn.classList.add('active');
+  $('admin-' + tab).classList.add('active');
+  
+  if (tab === 'members') renderMemberList();
+  if (tab === 'categories') renderCategoriesList();
+  if (tab === 'subcategories') renderSubcategoriesList();
+  if (tab === 'data') {
+    renderDataTabs();
+    renderDataList();
+  }
 }
 
 function updateStats() {
-  const arr=Object.values(members), now=new Date();
-  $('stat-total').textContent=arr.length;
-  $('stat-active').textContent=arr.filter(m=>m.approved&&new Date(m.expiresAt)>now&&!m.blacklisted&&!m.restricted).length;
-  $('stat-pending').textContent=arr.filter(m=>!m.approved&&!m.blacklisted&&!m.restricted&&m.status!=='expired').length;
-  $('stat-blacklisted').textContent=arr.filter(m=>m.blacklisted).length;
+  const arr = Object.values(members);
+  const now = new Date();
+  
+  $('stat-total').textContent = arr.length;
+  $('stat-active').textContent = arr.filter(m => 
+    m.approved && m.expiresAt && new Date(m.expiresAt) > now && !m.blacklisted && !m.restricted
+  ).length;
+  $('stat-pending').textContent = arr.filter(m => 
+    !m.approved && !m.blacklisted && !m.restricted && m.status !== 'expired'
+  ).length;
+  $('stat-blacklisted').textContent = arr.filter(m => m.blacklisted).length;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ███  MEMBER MANAGEMENT  ███
+   ███  MEMBER MANAGEMENT - CORECTAT  ███
    ═══════════════════════════════════════════════════════════════ */
 
 function getMemberStatus(m) {
-  if(m.blacklisted) return 'blacklisted';
-  if(m.restricted) return 'restricted';
-  if(m.approved && new Date(m.expiresAt)>new Date()) return 'active';
-  if(m.approved || m.status==='expired') return 'expired';
+  if (m.blacklisted) return 'blacklisted';
+  if (m.restricted) return 'restricted';
+  if (m.approved && m.expiresAt && new Date(m.expiresAt) > new Date()) return 'active';
+  if (m.approved || m.status === 'expired') return 'expired';
   return 'pending';
 }
 
-function filterMembers(q){memberSearchQuery=q.toLowerCase();renderMemberList();}
-function setMemberFilter(f,btn){currentMemberFilter=f;document.querySelectorAll('.admin-filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMemberList();}
+function filterMembers(q) {
+  memberSearchQuery = q.toLowerCase();
+  renderMemberList();
+}
+
+function setMemberFilter(f, btn) {
+  currentMemberFilter = f;
+  document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMemberList();
+}
 
 function renderMemberList() {
-  const c=$('member-list'); c.innerHTML='';
-  let arr=Object.values(members);
-  if(memberSearchQuery) arr=arr.filter(m=>m.username.toLowerCase().includes(memberSearchQuery)||m.id.includes(memberSearchQuery));
-  if(currentMemberFilter!=='all') arr=arr.filter(m=>getMemberStatus(m)===currentMemberFilter);
-  const ord={pending:0,active:1,expired:2,restricted:3,blacklisted:4};
-  arr.sort((a,b)=>(ord[getMemberStatus(a)]||5)-(ord[getMemberStatus(b)]||5));
+  const c = $('member-list'); 
+  c.innerHTML = '';
   
-  if(!arr.length){c.innerHTML='<div style="text-align:center;padding:25px;color:var(--dm);font-size:.85rem;">Niciun membru gasit</div>';return;}
+  let arr = Object.values(members);
   
-  arr.forEach(m=>{
-    const st=getMemberStatus(m);
-    const item=document.createElement('div');
-    let cls='member-item';
-    if(st==='pending') cls+=' pending-item';
-    if(st==='blacklisted') cls+=' blacklisted-item';
-    if(st==='restricted') cls+=' restricted-item';
-    if(m.isAdmin&&st==='active') cls+=' admin-item';
-    if(st==='expired') cls+=' expired-item';
-    item.className=cls;
+  if (memberSearchQuery) {
+    arr = arr.filter(m => 
+      m.username.toLowerCase().includes(memberSearchQuery) || 
+      m.id.includes(memberSearchQuery)
+    );
+  }
+  
+  if (currentMemberFilter !== 'all') {
+    arr = arr.filter(m => getMemberStatus(m) === currentMemberFilter);
+  }
+  
+  const ord = { pending: 0, active: 1, expired: 2, restricted: 3, blacklisted: 4 };
+  arr.sort((a, b) => (ord[getMemberStatus(a)] || 5) - (ord[getMemberStatus(b)] || 5));
+  
+  if (!arr.length) {
+    c.innerHTML = '<div style="text-align:center;padding:25px;color:var(--dm);font-size:.85rem;">Niciun membru gasit</div>';
+    return;
+  }
+  
+  arr.forEach(m => {
+    const st = getMemberStatus(m);
+    const item = document.createElement('div');
+    let cls = 'member-item';
     
-    let badge='';
-    switch(st){
-      case 'active': badge=m.isAdmin?'<span class="member-status admin-status">⭐ Admin</span>':'<span class="member-status active">✅ Activ</span>'; break;
-      case 'pending': badge='<span class="member-status pending">⏳ Asteptare</span>'; break;
-      case 'expired': badge='<span class="member-status expired">⏰ Expirat</span>'; break;
-      case 'blacklisted': badge='<span class="member-status blacklisted">🚫 Blacklist</span>'; break;
-      case 'restricted': badge='<span class="member-status restricted">⛔ Restrict</span>'; break;
+    if (st === 'pending') cls += ' pending-item';
+    if (st === 'blacklisted') cls += ' blacklisted-item';
+    if (st === 'restricted') cls += ' restricted-item';
+    if (m.isAdmin && st === 'active') cls += ' admin-item';
+    if (st === 'expired') cls += ' expired-item';
+    
+    item.className = cls;
+    
+    let badge = '';
+    switch(st) {
+      case 'active': 
+        badge = m.isAdmin ? '<span class="member-status admin-status">⭐ Admin</span>' : '<span class="member-status active">✅ Activ</span>'; 
+        break;
+      case 'pending': 
+        badge = '<span class="member-status pending">⏳ Asteptare</span>'; 
+        break;
+      case 'expired': 
+        badge = '<span class="member-status expired">⏰ Expirat</span>'; 
+        break;
+      case 'blacklisted': 
+        badge = '<span class="member-status blacklisted">🚫 Blacklist</span>'; 
+        break;
+      case 'restricted': 
+        badge = '<span class="member-status restricted">⛔ Restrict</span>'; 
+        break;
     }
     
-    let exp='';
-    if(m.expiresAt&&st==='active'){const d=Math.ceil((new Date(m.expiresAt)-new Date())/(1e3*60*60*24));exp=`<div class="member-expiry ${d<=3?'expired':d<=7?'expiring-soon':''}">• ${d} zile (exp: ${new Date(m.expiresAt).toLocaleDateString('ro-RO')})</div>`;}
-    if(st==='restricted'&&m.restrictedPermanent) exp='<div class="member-expiry expired">• Permanent</div>';
-    else if(st==='restricted'&&m.restrictedUntil) exp=`<div class="member-expiry expired">• Pana: ${new Date(m.restrictedUntil).toLocaleDateString('ro-RO')}</div>`;
+    let exp = '';
+    if (m.expiresAt && st === 'active') {
+      const d = Math.ceil((new Date(m.expiresAt) - new Date()) / (1e3 * 60 * 60 * 24));
+      exp = `<div class="member-expiry ${d <= 3 ? 'expired' : d <= 7 ? 'expiring-soon' : ''}">• ${d} zile (exp: ${new Date(m.expiresAt).toLocaleDateString('ro-RO')})</div>`;
+    }
+    if (st === 'restricted' && m.restrictedPermanent) {
+      exp = '<div class="member-expiry expired">• Permanent</div>';
+    } else if (st === 'restricted' && m.restrictedUntil) {
+      exp = `<div class="member-expiry expired">• Pana: ${new Date(m.restrictedUntil).toLocaleDateString('ro-RO')}</div>`;
+    }
     
-    let acts='';
-    if(st==='pending') acts=`<button class="m-action-btn approve" onclick="approveMember('${m.id}')">✅ Aproba</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
-    else if(st==='active') acts=`<button class="m-action-btn make-admin" onclick="toggleAdminMember('${m.id}')">${m.isAdmin?'👤':'⭐'}</button><button class="m-action-btn restrict" onclick="openRestrictModal('${m.id}')">⛔</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
-    else if(st==='expired') acts=`<button class="m-action-btn reactivate" onclick="approveMember('${m.id}')">🔄</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
-    else if(st==='restricted') acts=`<button class="m-action-btn reactivate" onclick="unrestrictMember('${m.id}')">🔓</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
-    else if(st==='blacklisted') acts=`<button class="m-action-btn reactivate" onclick="unblacklistMember('${m.id}')">🔓</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
+    let acts = '';
+    if (st === 'pending') {
+      acts = `<button class="m-action-btn approve" onclick="approveMember('${m.id}')">✅ Aproba</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
+    } else if (st === 'active') {
+      acts = `<button class="m-action-btn make-admin" onclick="toggleAdminMember('${m.id}')">${m.isAdmin ? '👤' : '⭐'}</button><button class="m-action-btn restrict" onclick="openRestrictModal('${m.id}')">⛔</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
+    } else if (st === 'expired') {
+      acts = `<button class="m-action-btn reactivate" onclick="approveMember('${m.id}')">🔄</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
+    } else if (st === 'restricted') {
+      acts = `<button class="m-action-btn reactivate" onclick="unrestrictMember('${m.id}')">🔓</button><button class="m-action-btn blacklist" onclick="blacklistMember('${m.id}')">🚫</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
+    } else if (st === 'blacklisted') {
+      acts = `<button class="m-action-btn reactivate" onclick="unblacklistMember('${m.id}')">🔓</button><button class="m-action-btn delete" onclick="deleteMember('${m.id}')">🗑️</button>`;
+    }
     
-    const fallbackAvatar="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%235865F2' width='100' height='100'/><text y='.9em' x='50' text-anchor='middle' font-size='60'>👤</text></svg>";
+    const fallbackAvatar = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%235865F2' width='100' height='100'/><text y='.9em' x='50' text-anchor='middle' font-size='60'>👤</text></svg>";
     
-    item.innerHTML=`
-      <img src="${m.avatar}" class="member-avatar ${m.isAdmin?'admin':''}" onerror="this.src=\"${fallbackAvatar}\"">
+    item.innerHTML = `
+      <img src="${m.avatar || fallbackAvatar}" class="member-avatar ${m.isAdmin ? 'admin' : ''}" onerror="this.src='${fallbackAvatar}'">
       <div class="member-info">
         <div class="member-name">${m.username} ${badge}</div>
-        <div class="member-meta">ID: ${m.id} • x${m.loginCount||0} • ${new Date(m.joinedAt).toLocaleDateString('ro-RO')}</div>
+        <div class="member-meta">ID: ${m.id} • x${m.loginCount || 0} • ${new Date(m.joinedAt || Date.now()).toLocaleDateString('ro-RO')}</div>
         ${exp}
       </div>
-      <div class="member-actions">${acts}</div>`;
+      <div class="member-actions">${acts}</div>
+    `;
     c.appendChild(item);
   });
+  
   updateStats();
 }
 
 function approveMember(id) {
-  if(!members[id]) return;
-  members[id].approved=true; members[id].status='active';
-  members[id].expiresAt=new Date(Date.now()+ACCESS_DURATION_MS).toISOString();
-  members[id].approvedAt=new Date().toISOString();
-  saveMembers(); renderMemberList();
-  showNotification('✅ '+members[id].username+' - acces '+ACCESS_DURATION_DAYS+' zile!');
+  if (!members[id]) return;
+  
+  members[id].approved = true;
+  members[id].status = 'active';
+  members[id].expiresAt = new Date(Date.now() + ACCESS_DURATION_MS).toISOString();
+  members[id].approvedAt = new Date().toISOString();
+  
+  saveMembers();
+  renderMemberList();
+  showNotification('✅ ' + members[id].username + ' - acces ' + ACCESS_DURATION_DAYS + ' zile!');
 }
 
 function toggleAdminMember(id) {
-  if(!members[id]) return;
-  members[id].isAdmin=!members[id].isAdmin;
-  saveMembers(); renderMemberList();
-  showNotification((members[id].isAdmin?'⭐':'👤')+' '+members[id].username+(members[id].isAdmin?' este Admin':' nu mai e Admin'));
+  if (!members[id]) return;
+  
+  members[id].isAdmin = !members[id].isAdmin;
+  saveMembers();
+  renderMemberList();
+  showNotification((members[id].isAdmin ? '⭐' : '👤') + ' ' + members[id].username + (members[id].isAdmin ? ' este Admin' : ' nu mai e Admin'));
 }
 
 function openRestrictModal(id) {
-  restrictingMemberId=id; const m=members[id]; if(!m) return;
-  $('restrict-content').innerHTML=`
+  restrictingMemberId = id;
+  const m = members[id];
+  if (!m) return;
+  
+  $('restrict-content').innerHTML = `
     <div style="padding:12px;background:rgba(0,0,0,.2);border-radius:10px;margin-bottom:15px;display:flex;align-items:center;gap:10px;">
       <img src="${m.avatar}" style="width:36px;height:36px;border-radius:50%;">
       <div><b>${m.username}</b><br><span style="font-size:.7rem;color:var(--dm)">ID: ${m.id}</span></div>
     </div>
-    <div class="form-group"><label>Tip</label><select id="restrict-type" onchange="$('restrict-dur').style.display=this.value==='permanent'?'none':'block'"><option value="temporary">Temporara</option><option value="permanent">Permanenta</option></select></div>
-    <div class="form-group" id="restrict-dur"><label>Zile</label><input type="number" id="restrict-days" value="7" min="1" max="365"></div>
-    <div class="form-group"><label>Motiv</label><textarea id="restrict-reason" placeholder="Optional..."></textarea></div>`;
+    <div class="form-group">
+      <label>Tip</label>
+      <select id="restrict-type" onchange="$('restrict-dur').style.display=this.value==='permanent'?'none':'block'">
+        <option value="temporary">Temporara</option>
+        <option value="permanent">Permanenta</option>
+      </select>
+    </div>
+    <div class="form-group" id="restrict-dur">
+      <label>Zile</label>
+      <input type="number" id="restrict-days" value="7" min="1" max="365">
+    </div>
+    <div class="form-group">
+      <label>Motiv</label>
+      <textarea id="restrict-reason" placeholder="Optional..."></textarea>
+    </div>
+  `;
+  
   $('restrict-modal').classList.add('active');
 }
 
 function confirmRestrict() {
-  if(!restrictingMemberId||!members[restrictingMemberId]) return;
-  const type=$('restrict-type').value, days=parseInt($('restrict-days')?.value)||7;
-  const m=members[restrictingMemberId];
-  m.restricted=true; m.approved=false; m.status='restricted';
-  m.restrictedPermanent=type==='permanent';
-  m.restrictedUntil=type==='permanent'?null:new Date(Date.now()+days*864e5).toISOString();
-  m.restrictReason=$('restrict-reason')?.value||'';
-  m.isAdmin=false;
-  saveMembers(); closeRestrictModal(); renderMemberList();
-  showNotification('⛔ '+m.username+' restrictionat'+(type==='permanent'?' permanent':' '+days+' zile'));
+  if (!restrictingMemberId || !members[restrictingMemberId]) return;
+  
+  const type = $('restrict-type').value;
+  const days = parseInt($('restrict-days')?.value) || 7;
+  const m = members[restrictingMemberId];
+  
+  m.restricted = true;
+  m.approved = false;
+  m.status = 'restricted';
+  m.restrictedPermanent = type === 'permanent';
+  m.restrictedUntil = type === 'permanent' ? null : new Date(Date.now() + days * 864e5).toISOString();
+  m.restrictReason = $('restrict-reason')?.value || '';
+  m.isAdmin = false;
+  
+  saveMembers();
+  closeRestrictModal();
+  renderMemberList();
+  showNotification('⛔ ' + m.username + ' restrictionat' + (type === 'permanent' ? ' permanent' : ' ' + days + ' zile'));
 }
 
-function closeRestrictModal(){$('restrict-modal').classList.remove('active');restrictingMemberId=null;}
-function unrestrictMember(id){if(!members[id])return;members[id].restricted=false;members[id].restrictedUntil=null;members[id].restrictedPermanent=false;members[id].status='pending';saveMembers();renderMemberList();showNotification('🔓 '+members[id].username+' deblocat!');}
-function blacklistMember(id){if(!members[id])return;if(!confirm('Blacklist "'+members[id].username+'"?'))return;members[id].blacklisted=true;members[id].approved=false;members[id].restricted=false;members[id].isAdmin=false;members[id].status='blacklisted';saveMembers();renderMemberList();showNotification('🚫 '+members[id].username+' BLACKLISTED!');}
-function unblacklistMember(id){if(!members[id])return;members[id].blacklisted=false;members[id].status='pending';saveMembers();renderMemberList();showNotification('🔓 '+members[id].username+' scos din blacklist!');}
-function deleteMember(id){if(!members[id])return;if(!confirm('STERGE DEFINITIV "'+members[id].username+'"?'))return;const n=members[id].username;delete members[id];saveMembers();renderMemberList();showNotification('🗑️ '+n+' sters!');}
-function clearExpiredMembers(){const exp=Object.values(members).filter(m=>getMemberStatus(m)==='expired');if(!exp.length){alert('Niciun membru expirat!');return;}if(!confirm('Sterge '+exp.length+' membri expirat?'))return;exp.forEach(m=>delete members[m.id]);saveMembers();renderMemberList();showNotification('🗑️ '+exp.length+' stersi!');}
-function exportMembers(){const d={members,exportDate:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='craft_members_'+new Date().toISOString().split('T')[0]+'.json';l.click();showNotification('👥 Membri exportati!');}
+function closeRestrictModal() {
+  $('restrict-modal').classList.remove('active');
+  restrictingMemberId = null;
+}
+
+function unrestrictMember(id) {
+  if (!members[id]) return;
+  
+  members[id].restricted = false;
+  members[id].restrictedUntil = null;
+  members[id].restrictedPermanent = false;
+  members[id].status = 'pending';
+  
+  saveMembers();
+  renderMemberList();
+  showNotification('🔓 ' + members[id].username + ' deblocat!');
+}
+
+function blacklistMember(id) {
+  if (!members[id]) return;
+  if (!confirm('Blacklist "' + members[id].username + '"?')) return;
+  
+  members[id].blacklisted = true;
+  members[id].approved = false;
+  members[id].restricted = false;
+  members[id].isAdmin = false;
+  members[id].status = 'blacklisted';
+  
+  saveMembers();
+  renderMemberList();
+  showNotification('🚫 ' + members[id].username + ' BLACKLISTED!');
+}
+
+function unblacklistMember(id) {
+  if (!members[id]) return;
+  
+  members[id].blacklisted = false;
+  members[id].status = 'pending';
+  
+  saveMembers();
+  renderMemberList();
+  showNotification('🔓 ' + members[id].username + ' scos din blacklist!');
+}
+
+function deleteMember(id) {
+  if (!members[id]) return;
+  if (!confirm('STERGE DEFINITIV "' + members[id].username + '"?')) return;
+  
+  const n = members[id].username;
+  delete members[id];
+  saveMembers();
+  renderMemberList();
+  showNotification('🗑️ ' + n + ' sters!');
+}
+
+function clearExpiredMembers() {
+  const exp = Object.values(members).filter(m => getMemberStatus(m) === 'expired');
+  if (!exp.length) {
+    alert('Niciun membru expirat!');
+    return;
+  }
+  if (!confirm('Sterge ' + exp.length + ' membri expirat?')) return;
+  
+  exp.forEach(m => delete members[m.id]);
+  saveMembers();
+  renderMemberList();
+  showNotification('🗑️ ' + exp.length + ' stersi!');
+}
+
+function exportMembers() {
+  const d = { members, exportDate: new Date().toISOString() };
+  const b = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+  const l = document.createElement('a');
+  l.href = URL.createObjectURL(b);
+  l.download = 'craft_members_' + new Date().toISOString().split('T')[0] + '.json';
+  l.click();
+  showNotification('👥 Membri exportati!');
+}
 
 /* ═══════════════════════════════════════════════════════════════
    ███  MANAGER CATEGORII  ███
@@ -1928,13 +2280,37 @@ function renderMainCategories() {
   categories.forEach((cat, index) => {
     const btn = document.createElement('div');
     btn.className = `cat-group-btn ${cat.color} ${index === 0 ? 'on' : ''}`;
-    btn.onclick = () => showCategory(cat.id);
+    // ✅ CORECTAT: Folosim function pentru a păstra referința la element
+    btn.onclick = function() { showCategory(cat.id, this); };
     btn.innerHTML = `
       <span class="cg-icon">${cat.icon}</span>${cat.name}
       <div class="cg-sub">${cat.sub}</div>
     `;
     container.appendChild(btn);
   });
+}
+
+// ✅ CORECTAT: Adăugat parametrul clickedElement
+function showCategory(catId, clickedElement) {
+  // Update buttons
+  document.querySelectorAll('.cat-group-btn').forEach(btn => btn.classList.remove('on'));
+  clickedElement.classList.add('on');
+  
+  // Update panels
+  document.querySelectorAll('.cat-panel').forEach(p => p.classList.remove('on'));
+  const panel = $(`panel_${catId}`);
+  if (panel) panel.classList.add('on');
+}
+
+// ✅ CORECTAT: Adăugat parametrul clickedTab
+function switchSubTab(category, tabId, clickedTab) {
+  const container = $(`panel_${category}`);
+  container.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
+  clickedTab.classList.add('on');
+  
+  container.querySelectorAll('.pn').forEach(p => p.classList.remove('on'));
+  const panel = $(`${category}_${tabId}`);
+  if (panel) panel.classList.add('on');
 }
 
 function renderDynamicPanels() {
@@ -1953,7 +2329,8 @@ function renderDynamicPanels() {
     
     if (subs.length > 0) {
       subTabsHTML = `<div class="sub-tabs ${cat.color}" id="tabs_${cat.id}">` + 
-        subs.map((sub, i) => `<div class="tb ${i === 0 ? 'on' : ''}" onclick="switchSubTab('${cat.id}', '${sub.id}')">${sub.icon} ${sub.name}</div>`).join('') + 
+        // ✅ CORECTAT: Adăugat 'this' ca parametru pentru switchSubTab
+        subs.map((sub, i) => `<div class="tb ${i === 0 ? 'on' : ''}" onclick="switchSubTab('${cat.id}', '${sub.id}', this)">${sub.icon} ${sub.name}</div>`).join('') + 
         '</div>';
       
       subPanelsHTML = subs.map((sub, i) => {
@@ -1967,12 +2344,14 @@ function renderDynamicPanels() {
   });
   
   // Inițializează calculatoarele
-  initB(); cB();
-  initC();
-  initA(); cA();
-  initComp();
-  initM();
-  initL();
+  setTimeout(() => {
+    initB(); cB();
+    initC();
+    initA(); cA();
+    initComp();
+    initM();
+    initL();
+  }, 100);
 }
 
 function generateSubcategoryContent(catId, sub) {
@@ -2066,27 +2445,6 @@ function generateCardsContent(catId, sub) {
   return `<div class="sc"><div class="st">Carduri ${sub.name}</div></div>`;
 }
 
-function showCategory(catId) {
-  // Update buttons
-  document.querySelectorAll('.cat-group-btn').forEach(btn => btn.classList.remove('on'));
-  event.currentTarget.classList.add('on');
-  
-  // Update panels
-  document.querySelectorAll('.cat-panel').forEach(p => p.classList.remove('on'));
-  const panel = $(`panel_${catId}`);
-  if (panel) panel.classList.add('on');
-}
-
-function switchSubTab(category, tabId) {
-  const container = $(`panel_${category}`);
-  container.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
-  event.target.classList.add('on');
-  
-  container.querySelectorAll('.pn').forEach(p => p.classList.remove('on'));
-  const panel = $(`${category}_${tabId}`);
-  if (panel) panel.classList.add('on');
-}
-
 /* ═══════════════════════════════════════════════════════════════
    ███  MANAGER DATE  ███
    ═══════════════════════════════════════════════════════════════ */
@@ -2139,7 +2497,6 @@ function renderDataList() {
 }
 
 function renderItemHTML(key, value) {
-  // ... (la fel ca înainte)
   let meta = '';
   switch(currentDataCategory) {
     case 'arme':
@@ -2230,7 +2587,6 @@ function getCategoryLabel() {
 }
 
 function generateFormFields(editKey = null) {
-  // ... (la fel ca înainte, dar folosește var(--owner) în loc de var(--a) pentru focus)
   let data = null;
   if (editKey) {
     switch(currentDataCategory) {
@@ -2249,6 +2605,7 @@ function generateFormFields(editKey = null) {
              placeholder="Ex: Combat Pistol, 9mm, etc">
     </div>
   `;
+  
   switch(currentDataCategory) {
     case 'arme':
       const categories = ['Pistol', 'SMG', 'Rifle', 'Shotgun', 'Heavy', 'MG', 'Special'];
@@ -2582,7 +2939,7 @@ function exportData() {
   };
   
   const dataStr = JSON.stringify(exportObj, null, 2);
-  const dataBlob = new Blob([dataStr], {type: 'application/json'});
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(dataBlob);
   const link = document.createElement('a');
   link.href = url;
@@ -2664,25 +3021,31 @@ function showNotification(message) {
   }, 3000);
 }
 
-
 const $ = id => document.getElementById(id);
 const F = n => Math.floor(n).toLocaleString('ro-RO');
+
 function A(id, v) {
-  const e = $(id); if (!e) return;
-  e.textContent = v; e.classList.remove('up');
-  void e.offsetWidth; e.classList.add('up');
+  const e = $(id); 
+  if (!e) return;
+  e.textContent = v; 
+  e.classList.remove('up');
+  void e.offsetWidth; 
+  e.classList.add('up');
 }
+
 function catBadge(cat) {
-  const c = cat.toLowerCase().replace(/\s.*/,'');
-  const map = {pistol:'pistol',smg:'smg',rifle:'rifle',shotgun:'shotgun',heavy:'heavy',mg:'mg',special:'special'};
-  return `<span class="cat-badge ${map[c]||'special'}">${cat}</span>`;
+  const c = cat.toLowerCase().replace(/\s.*/, '');
+  const map = { pistol: 'pistol', smg: 'smg', rifle: 'rifle', shotgun: 'shotgun', heavy: 'heavy', mg: 'mg', special: 'special' };
+  return `<span class="cat-badge ${map[c] || 'special'}">${cat}</span>`;
 }
 
 let curB = Object.keys(MUNITIE)[0] || '9mm';
+
 function initB() {
   const c = $('bBtns');
   if (!c) return;
   c.innerHTML = '';
+  
   Object.entries(MUNITIE).forEach(([k, v]) => {
     const b = document.createElement('div');
     b.className = 'bt' + (k === curB ? ' on' : '');
@@ -2690,44 +3053,73 @@ function initB() {
     b.onclick = () => {
       curB = k;
       document.querySelectorAll('#bBtns .bt').forEach(x => x.classList.remove('on'));
-      b.classList.add('on'); cB();
+      b.classList.add('on'); 
+      cB();
     };
     c.appendChild(b);
   });
 }
+
 function cB() {
-  const w = parseInt($('bI')?.value) || 0, cfg = MUNITIE[curB]; if (!cfg) return;
-  const ca = Math.ceil(w / cfg.gpc), pr = ca * cfg.gpc;
-  const cu = ca * cfg.cu, pb = ca * cfg.pb, pf = ca * cfg.pr;
-  A('bC', F(ca)); A('bP', F(pr));
-  A('bCu', F(cu)); A('bPb', F(pb)); A('bPr', F(pf));
-  A('bT', curB); A('bQ', F(w)); A('bTP', F(pr)); A('bTM', F(cu + pb + pf));
-  if ($('bR')) $('bR').textContent = cfg.ret;
+  const w = parseInt($('bI')?.value) || 0;
+  const cfg = MUNITIE[curB]; 
+  if (!cfg) return;
+  
+  const ca = Math.ceil(w / cfg.gpc);
+  const pr = ca * cfg.gpc;
+  const cu = ca * cfg.cu;
+  const pb = ca * cfg.pb;
+  const pf = ca * cfg.pr;
+  
+  A('bC', F(ca)); 
+  A('bP', F(pr));
+  A('bCu', F(cu)); 
+  A('bPb', F(pb)); 
+  A('bPr', F(pf));
 }
 
 const COCA_STEPS = [
-  ['Frunze de Coca',      '🌿', 'gn'],
-  ['Sticle (Extractie)',  '🧪', 'bl'],
-  ['Tavi (Uscare)',       '🍳', 'gl'],
-  ['Brichete (Presare)',  '🧱', 'rd'],
-  ['Pungi (Impartire)',   '👜', 'vt'],
-  ['Plicuri (Final)',     '📦', 'gn'],
+  ['Frunze de Coca', '🌿', 'gn'],
+  ['Sticle (Extractie)', '🧪', 'bl'],
+  ['Tavi (Uscare)', '🍳', 'gl'],
+  ['Brichete (Presare)', '🧱', 'rd'],
+  ['Pungi (Impartire)', '👜', 'vt'],
+  ['Plicuri (Final)', '📦', 'gn'],
 ];
+
 function initC() {
   const c = $('cCards');
   if (!c) return;
+  
   c.innerHTML = '';
   COCA_STEPS.forEach((s, i) => {
     c.innerHTML += `<div class="mc ${s[2]}"><div class="ic">${s[1]}</div><div class="nm">${s[0]}</div><div class="vl" id="cc${i}">0</div><div class="un" id="ck${i}">0.00 kg</div></div>`;
   });
 }
+
 function cC() {
   const f = parseInt($('cI')?.value) || 0;
-  const fk=.04*f, sn=.05*f, sk=.4*sn, tn=sn, tk=.3*tn;
-  const bn=tn, bk=.2*bn, pn=2*bn, pk=.03*pn, ln=pn, lk=.2*ln;
-  const vals = [[f,fk],[sn,sk],[tn,tk],[bn,bk],[pn,pk],[ln,lk]];
-  vals.forEach(([n,k], i) => { A('cc'+i, F(Math.floor(n))); if ($('ck'+i)) $('ck'+i).textContent = k.toFixed(2)+' kg' });
-  A('cK', (fk+sk+tk+bk+pk).toFixed(2));
+  
+  const fk = .04 * f;
+  const sn = .05 * f;
+  const sk = .4 * sn;
+  const tn = sn;
+  const tk = .3 * tn;
+  const bn = tn;
+  const bk = .2 * bn;
+  const pn = 2 * bn;
+  const pk = .03 * pn;
+  const ln = pn;
+  const lk = .2 * ln;
+  
+  const vals = [[f, fk], [sn, sk], [tn, tk], [bn, bk], [pn, pk], [ln, lk]];
+  
+  vals.forEach(([n, k], i) => { 
+    A('cc' + i, F(Math.floor(n))); 
+    if ($('ck' + i)) $('ck' + i).textContent = k.toFixed(2) + ' kg';
+  });
+  
+  A('cK', (fk + sk + tk + bk + pk).toFixed(2));
   A('cP', F(Math.floor(ln)));
   A('cF', '$' + F(Math.floor(ln * 13600)));
 }
@@ -2735,58 +3127,83 @@ function cC() {
 function initA() {
   const s = $('aS');
   if (!s) return;
+  
   s.innerHTML = '';
   const cats = {};
+  
   Object.entries(ARME).forEach(([k, v]) => {
     if (!cats[v.cat]) cats[v.cat] = [];
     cats[v.cat].push(k);
   });
+  
   Object.entries(cats).forEach(([cat, names]) => {
     const g = document.createElement('optgroup');
     g.label = cat;
-    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; g.appendChild(o) });
+    names.forEach(n => { 
+      const o = document.createElement('option'); 
+      o.value = n; 
+      o.textContent = n; 
+      g.appendChild(o);
+    });
     s.appendChild(g);
   });
 }
+
 function cA() {
-  const n = $('aS')?.value, q = parseInt($('aQ')?.value) || 1, a = ARME[n]; if (!a) return;
+  const n = $('aS')?.value;
+  const q = parseInt($('aQ')?.value) || 1;
+  const a = ARME[n]; 
+  if (!a) return;
+  
   let h = `<div class="sc"><div class="st">${n} × ${q}</div>
   <div class="ib">Categorie: ${catBadge(a.cat)} &nbsp; Munitie: <b style="color:var(--s)">${a.mun}</b></div>
   <table><tr><th>Piesa</th><th>Per Arma</th><th>Total (×${q})</th></tr>`;
+  
   let t = 0;
   Object.entries(a.piese).forEach(([p, nr]) => {
-    h += `<tr><td>${p}</td><td>${nr}×</td><td><b>${nr*q}×</b></td></tr>`;
+    h += `<tr><td>${p}</td><td>${nr}×</td><td><b>${nr * q}×</b></td></tr>`;
     t += nr * q;
   });
+  
   h += `<tr style="border-top:2px solid var(--p)"><td colspan="2"><b style="color:var(--a)">TOTAL PIESE</b></td><td><b style="color:var(--s);font-size:1.1rem">${t}×</b></td></tr></table></div>`;
+  
   const m = MUNITIE[a.mun];
-  if (m) h += `<div class="sc"><div class="st cyan">🎯 Munitie Recomandata: ${a.mun}</div>
-  <div class="rc"><b>${m.ret}</b></div>
-  <div class="ib">Foloseste tab-ul <b>🎯 Gloante</b> pentru calculator detaliat munitie</div></div>`;
+  if (m) {
+    h += `<div class="sc"><div class="st cyan">🎯 Munitie Recomandata: ${a.mun}</div>
+    <div class="rc"><b>${m.ret}</b></div>
+    <div class="ib">Foloseste tab-ul <b>🎯 Gloante</b> pentru calculator detaliat munitie</div></div>`;
+  }
+  
   if ($('aR')) $('aR').innerHTML = h;
 }
 
 function initComp() {
   if (!$('cT')) return;
+  
   let h = `<div class="sc"><div class="st cyan">🔩 Componente Craft</div>
   <table><tr><th>Componenta</th><th>Materiale Necesare</th><th>Descriere</th></tr>`;
+  
   Object.entries(COMP).forEach(([k, v]) => {
     const mats = Object.values(v.mat).map(m => `<span style="color:var(--s)">${m}</span>`).join(', ');
     h += `<tr><td><b>${k}</b></td><td>${mats}</td><td style="color:var(--dm)">${v.desc}</td></tr>`;
   });
+  
   h += `</table></div>`;
 
   h += `<div class="sc"><div class="st">🛠️ Materiale Arme → Piese de Arme</div>
   <table><tr><th>Piesa</th><th>Piese Arme Necesare</th><th>Categorie</th></tr>`;
+  
   Object.entries(MATARME).forEach(([k, v]) => {
     h += `<tr><td><b>${k}</b></td><td style="color:var(--s);font-weight:700">${v.pa}×</td><td>${catBadge(v.cat)}</td></tr>`;
   });
+  
   h += `</table></div>`;
   $('cT').innerHTML = h;
 }
 
 function initM() {
   if (!$('mT')) return;
+  
   const cats = {};
   Object.entries(MASA).forEach(([k, v]) => {
     if (!cats[v.cat]) cats[v.cat] = [];
@@ -2809,11 +3226,13 @@ function initM() {
     });
     h += `</div>`;
   });
+  
   $('mT').innerHTML = h;
 }
 
 function initL() {
   if (!$('lT')) return;
+  
   let h = '<div class="gr g2">';
   Object.entries(LOC).forEach(([k, v]) => {
     h += `<div class="mc bl" style="text-align:left;padding:20px">
@@ -2834,45 +3253,76 @@ function initL() {
   $('lT').innerHTML = h;
 }
 
+// ✅ CORECTAT: Verificare defensivă pentru canvas
 function initParticles() {
-  const c = $('particles'), ctx = c.getContext('2d');
+  const c = $('particles');
+  if (!c) {
+    console.warn('Canvas #particles nu a fost găsit');
+    return;
+  }
+  
+  const ctx = c.getContext('2d');
+  if (!ctx) {
+    console.warn('Context 2D nu este suportat');
+    return;
+  }
+  
   let W, H, pts = [];
-  function resize() { W = c.width = innerWidth; H = c.height = innerHeight }
-  resize(); addEventListener('resize', resize);
+  
+  function resize() { 
+    W = c.width = innerWidth; 
+    H = c.height = innerHeight;
+  }
+  
+  resize(); 
+  addEventListener('resize', resize);
+  
   for (let i = 0; i < 40; i++) {
     pts.push({
-      x: Math.random()*W, y: Math.random()*H,
-      r: Math.random()*1.5+.5, dx: (Math.random()-.5)*.3, dy: (Math.random()-.5)*.3,
-      a: Math.random()*.3+.1
+      x: Math.random() * W, 
+      y: Math.random() * H,
+      r: Math.random() * 1.5 + .5, 
+      dx: (Math.random() - .5) * .3, 
+      dy: (Math.random() - .5) * .3,
+      a: Math.random() * .3 + .1
     });
   }
+  
   function draw() {
     ctx.clearRect(0, 0, W, H);
     pts.forEach(p => {
-      p.x += p.dx; p.y += p.dy;
-      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      p.x += p.dx; 
+      p.y += p.dy;
+      if (p.x < 0) p.x = W; 
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; 
+      if (p.y > H) p.y = 0;
+      
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255,107,53,${p.a})`;
       ctx.fill();
     });
+    
     for (let i = 0; i < pts.length; i++) {
-      for (let j = i+1; j < pts.length; j++) {
-        const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
-        const d = Math.sqrt(dx*dx + dy*dy);
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x;
+        const dy = pts[i].y - pts[j].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
         if (d < 120) {
           ctx.beginPath();
           ctx.moveTo(pts[i].x, pts[i].y);
           ctx.lineTo(pts[j].x, pts[j].y);
-          ctx.strokeStyle = `rgba(255,107,53,${.06*(1-d/120)})`;
+          ctx.strokeStyle = `rgba(255,107,53,${.06 * (1 - d / 120)})`;
           ctx.lineWidth = .5;
           ctx.stroke();
         }
       }
     }
+    
     requestAnimationFrame(draw);
   }
+  
   draw();
 }
 
