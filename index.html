@@ -816,9 +816,13 @@ td b { color:var(--s) }
 @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:none;opacity:1} }
 @keyframes slideOut { from{transform:none;opacity:1} to{transform:translateX(100px);opacity:0} }
 
+/* Anti-source protection */
+input, textarea, select { -webkit-user-select: text !important; -moz-user-select: text !important; user-select: text !important; }
+
 </style>
+<noscript><meta http-equiv="refresh" content="0;url=about:blank"></noscript>
 </head>
-<body>
+<body style="-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;" oncontextmenu="return false;" ondragstart="return false;" onselectstart="return false;">
 
 <canvas id="particles"></canvas>
 
@@ -994,6 +998,111 @@ td b { color:var(--s) }
 </div>
 
 <script>
+/* ═══════════════════════════════════════════════════════════════
+   ███  PROTECTIE SOURCE CODE  ███
+   ═══════════════════════════════════════════════════════════════ */
+
+// Blocheaza right-click
+document.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  showNotification('\u{1F6AB} Click dreapta este dezactivat!');
+  return false;
+});
+
+// Blocheaza combinatii de taste pentru view source / devtools
+document.addEventListener('keydown', function(e) {
+  // F12
+  if (e.key === 'F12' || e.keyCode === 123) {
+    e.preventDefault();
+    showNotification('\u{1F6AB} Accesul la DevTools este restrictionat!');
+    return false;
+  }
+  // Ctrl+Shift+I (DevTools)
+  if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+    e.preventDefault();
+    showNotification('\u{1F6AB} Accesul la DevTools este restrictionat!');
+    return false;
+  }
+  // Ctrl+Shift+J (Console)
+  if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+    e.preventDefault();
+    return false;
+  }
+  // Ctrl+Shift+C (Element Inspector)
+  if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+    e.preventDefault();
+    return false;
+  }
+  // Ctrl+U (View Source)
+  if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
+    e.preventDefault();
+    showNotification('\u{1F6AB} Vizualizarea sursei este restrictionata!');
+    return false;
+  }
+  // Ctrl+S (Save Page)
+  if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
+    e.preventDefault();
+    showNotification('\u{1F6AB} Salvarea paginii este dezactivata!');
+    return false;
+  }
+  // Ctrl+Shift+U (View Source Firefox)
+  if (e.ctrlKey && e.shiftKey && (e.key === 'U' || e.key === 'u')) {
+    e.preventDefault();
+    return false;
+  }
+});
+
+// Blocheaza selectarea textului si drag
+document.addEventListener('selectstart', function(e) {
+  // Permite selectarea in input-uri si textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return true;
+  e.preventDefault();
+  return false;
+});
+
+document.addEventListener('dragstart', function(e) {
+  e.preventDefault();
+  return false;
+});
+
+// Detectare DevTools prin dimensiune fereastra
+(function() {
+  const threshold = 160;
+  let devtoolsOpen = false;
+  
+  function checkDevTools() {
+    const widthDiff = window.outerWidth - window.innerWidth > threshold;
+    const heightDiff = window.outerHeight - window.innerHeight > threshold;
+    
+    if ((widthDiff || heightDiff) && !devtoolsOpen) {
+      devtoolsOpen = true;
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#060610;color:#ff3366;font-family:Orbitron,monospace;font-size:1.5rem;text-align:center;padding:40px;"><div>\u{1F6AB} ACCES INTERZIS<br><br><span style="font-size:.8rem;color:#6b6b8a;">Inspectarea codului sursa este restrictionata.<br>Inchide DevTools pentru a continua.</span></div></div>';
+    }
+    if (!widthDiff && !heightDiff && devtoolsOpen) {
+      devtoolsOpen = false;
+      location.reload();
+    }
+  }
+  
+  setInterval(checkDevTools, 1000);
+  
+  // Anti-debugging: detecteaza debugger
+  (function antiDebug() {
+    const start = performance.now();
+    debugger;
+    const end = performance.now();
+    if (end - start > 100) {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#060610;color:#ff3366;font-family:Orbitron,monospace;font-size:1.5rem;text-align:center;padding:40px;"><div>\u{1F6AB} DEBUGGING DETECTAT<br><br><span style="font-size:.8rem;color:#6b6b8a;">Accesul este restrictionat.</span></div></div>';
+    }
+  })();
+  
+  // Console clear & warning
+  console.clear();
+  console.log('%c\u26D4 STOP!', 'color:red;font-size:60px;font-weight:bold;');
+  console.log('%cAccesul la codul sursa al acestei pagini este RESTRICTIONAT.', 'color:#ff6b35;font-size:16px;');
+  console.log('%cOrice tentativa de copiere sau inspectare este monitorizata.', 'color:#6b6b8a;font-size:12px;');
+})();
+
 /* ═══════════════════════════════════════════════════════════════
    ███  CONFIGURATIE OWNER & DISCORD  ███
    ═══════════════════════════════════════════════════════════════ */
@@ -1492,6 +1601,143 @@ function unblacklistMember(id){if(!members[id])return;members[id].blacklisted=fa
 function deleteMember(id){if(!members[id])return;if(!confirm('STERGE DEFINITIV "'+members[id].username+'"?'))return;const n=members[id].username;delete members[id];saveMembers();renderMemberList();showNotification('\u{1F5D1} '+n+' sters!');}
 function clearExpiredMembers(){const exp=Object.values(members).filter(m=>getMemberStatus(m)==='expired');if(!exp.length){alert('Niciun membru expirat!');return;}if(!confirm('Sterge '+exp.length+' membri expirat?'))return;exp.forEach(m=>delete members[m.id]);saveMembers();renderMemberList();showNotification('\u{1F5D1} '+exp.length+' stersi!');}
 function exportMembers(){const d={members,exportDate:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='craft_members_'+new Date().toISOString().split('T')[0]+'.json';l.click();showNotification('\u{1F465} Membri exportati!');}
+
+/* ═══════════════════════════════════════════════════════════════
+   ███  MANAGER CATEGORII  ███
+   ═══════════════════════════════════════════════════════════════ */
+
+function renderCategoriesList() {
+  const container = $('category-list');
+  container.innerHTML = '';
+  
+  categories.forEach((cat, index) => {
+    const item = document.createElement('div');
+    item.className = 'category-item ' + (index === 0 ? 'active' : '');
+    item.innerHTML = `
+      <div class="category-info">
+        <span class="category-icon">${cat.icon}</span>
+        <div>
+          <div class="category-name">${cat.name}</div>
+          <div class="category-id">ID: ${cat.id}</div>
+        </div>
+      </div>
+      <div class="data-item-actions">
+        <button class="icon-btn edit" onclick="editCategory(${index})">✏️</button>
+        <button class="icon-btn delete" onclick="deleteCategory(${index})">🗑️</button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function openCategoryModal(editIndex = null) {
+  modalMode = 'category';
+  editingItem = editIndex;
+  
+  const cat = editIndex !== null ? categories[editIndex] : null;
+  
+  $('modal-title').textContent = editIndex !== null ? 'Editeaza Categorie' : 'Adauga Categorie Noua';
+  $('modal-content').innerHTML = `
+    <div class="form-group">
+      <label>ID Categorie (unic, fara spatii)</label>
+      <input type="text" id="cat-id" value="${cat?.id || ''}" ${cat ? 'readonly' : ''} placeholder="ex: mafie, legal, arme">
+    </div>
+    <div class="form-group">
+      <label>Nume Afisat</label>
+      <input type="text" id="cat-name" value="${cat?.name || ''}" placeholder="ex: CRAFT ARME">
+    </div>
+    <div class="form-group">
+      <label>Icon (emoji)</label>
+      <input type="text" id="cat-icon" value="${cat?.icon || '🔫'}" maxlength="2">
+    </div>
+    <div class="form-group">
+      <label>Subtitlu</label>
+      <input type="text" id="cat-sub" value="${cat?.sub || ''}" placeholder="ex: Cocaina • Gloante • Arme">
+    </div>
+    <div class="form-group">
+      <label>Culoare Tema</label>
+      <select id="cat-color">
+        <option value="mafie" ${cat?.color === 'mafie' ? 'selected' : ''}>Mafie (Rosu)</option>
+        <option value="legal" ${cat?.color === 'legal' ? 'selected' : ''}>Legal (Verde)</option>
+      </select>
+    </div>
+  `;
+  
+  $('modal-overlay').classList.add('active');
+}
+
+function editCategory(index) {
+  openCategoryModal(index);
+}
+
+function deleteCategory(index) {
+  if (categories.length <= 1) {
+    alert('Trebuie sa existe cel putin o categorie!');
+    return;
+  }
+  
+  if (confirm('Sigur vrei sa stergi aceasta categorie? Toate datele asociate vor fi pierdute!')) {
+    const catId = categories[index].id;
+    categories.splice(index, 1);
+    saveCategories();
+    
+    delete APP_DATA[catId.toUpperCase()];
+    saveAppData();
+    
+    renderCategoriesList();
+    renderMainCategories();
+    renderDynamicPanels();
+    renderDataTabs();
+  }
+}
+
+function saveCategory() {
+  const id = $('cat-id').value.trim().toLowerCase();
+  const name = $('cat-name').value.trim();
+  const icon = $('cat-icon').value;
+  const sub = $('cat-sub').value.trim();
+  const color = $('cat-color').value;
+  
+  if (!id || !name) {
+    alert('ID si Numele sunt obligatorii!');
+    return;
+  }
+  
+  if (!/^[a-z0-9_]+$/.test(id)) {
+    alert('ID-ul poate contine doar litere mici, cifre si underscore!');
+    return;
+  }
+  
+  const newCat = { id, name, icon, sub, color };
+  
+  if (editingItem !== null) {
+    const oldId = categories[editingItem].id;
+    categories[editingItem] = newCat;
+    
+    if (oldId !== id && APP_DATA[oldId.toUpperCase()]) {
+      APP_DATA[id.toUpperCase()] = APP_DATA[oldId.toUpperCase()];
+      delete APP_DATA[oldId.toUpperCase()];
+      saveAppData();
+    }
+  } else {
+    if (categories.find(c => c.id === id)) {
+      alert('Exista deja o categorie cu acest ID!');
+      return;
+    }
+    categories.push(newCat);
+    
+    APP_DATA[id.toUpperCase()] = {};
+    saveAppData();
+  }
+  
+  saveCategories();
+  closeModal();
+  renderCategoriesList();
+  renderMainCategories();
+  renderDynamicPanels();
+  renderDataTabs();
+  showNotification(`Categoria "${name}" a fost ${editingItem !== null ? 'actualizata' : 'adaugata'}!`);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    ███  RANDARE CATEGORII IN MAIN APP  ███
