@@ -2960,7 +2960,10 @@ function renderDynamicPanels() {
     
     // Inițializează calculatoarele personalizate
     calculators.forEach(calc => {
-      calcCustom(calc.id);
+      const inputElem = $(`calc_${calc.id}_input`);
+      if (inputElem) {
+        calcCustom(calc.id);
+      }
     });
   }, 100);
 }
@@ -3919,9 +3922,17 @@ function calcCustom(calcId) {
     return;
   }
   
+  console.log('🔄 calcCustom apelat pentru:', calcId);
+  
   // Iau valoarea din input
   const inputElem = $(`calc_${calcId}_input`);
-  const inputValue = inputElem ? parseFloat(inputElem.value) || 0 : 0;
+  if (!inputElem) {
+    console.error('Input element nu exista pentru:', calcId);
+    return;
+  }
+  
+  const inputValue = parseFloat(inputElem.value) || 0;
+  console.log('📊 Input value:', inputValue);
   
   const inputs = { cantitate: inputValue };
   
@@ -3932,12 +3943,14 @@ function calcCustom(calcId) {
     if (calc.formula && calc.formula.trim()) {
       const formulaFunc = new Function('inputs', calc.formula);
       result = formulaFunc(inputs) || { steps: [], summary: {} };
+      console.log('✅ Formula executată, rezultat:', result);
     }
     
     // Randează cardurile pentru etape (identic cu cocaina)
     const cardsContainer = $(`calc_${calcId}_cards`);
     if (cardsContainer && result.steps && calc.steps.length > 0) {
       cardsContainer.innerHTML = '';
+      console.log('🎨 Randez', calc.steps.length, 'carduri');
       
       calc.steps.forEach((step, i) => {
         const stepData = result.steps[i] || [0, 0];
@@ -3961,12 +3974,15 @@ function calcCustom(calcId) {
         
         cardsContainer.appendChild(card);
       });
+    } else {
+      console.warn('⚠️ Cards container nu exista sau nu sunt etape');
     }
     
     // Randează sumarul final (identic cu cocaina)
     const summaryContainer = $(`calc_${calcId}_summary`);
     if (summaryContainer && result.summary && calc.summary.length > 0) {
       summaryContainer.innerHTML = '';
+      console.log('📈 Randez', calc.summary.length, 'rezultate sumar');
       
       calc.summary.forEach(sum => {
         const value = result.summary[sum.id] !== undefined ? result.summary[sum.id] : 0;
@@ -3991,10 +4007,12 @@ function calcCustom(calcId) {
         `;
         summaryContainer.appendChild(summaryItem);
       });
+    } else {
+      console.warn('⚠️ Summary container nu exista sau nu sunt rezultate');
     }
     
   } catch (err) {
-    console.error('Eroare la executia formulei pentru', calcId, ':', err);
+    console.error('❌ Eroare la executia formulei pentru', calcId, ':', err);
     
     const cardsContainer = $(`calc_${calcId}_cards`);
     if (cardsContainer) {
