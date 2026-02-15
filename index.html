@@ -892,6 +892,16 @@ td b { color:var(--s) }
 /* Anti-source protection */
 input, textarea, select { -webkit-user-select: text !important; -moz-user-select: text !important; user-select: text !important; }
 
+/* JSONBin Sync Animation */
+@keyframes cloudPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.syncing {
+  animation: cloudPulse 1s infinite;
+  color: var(--s) !important;
+}
+
 </style>
 <noscript><meta http-equiv="refresh" content="0;url=about:blank"></noscript>
 </head>
@@ -1001,6 +1011,13 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
     <input type="file" id="import-file" style="display:none;" accept=".json" onchange="handleImport(event)">
     <button onclick="exportMembers()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--s),#cc9900);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">👥 Exporta Membri</button>
     <button onclick="clearExpiredMembers()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--r),#cc0033);border:none;border-radius:8px;color:white;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">🗑️ Sterge Membri Expirat</button>
+    <button onclick="syncToCloudManual()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,#5865F2,#4752C4);border:none;border-radius:8px;color:white;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">☁️ Sincronizează Acum</button>
+    <button onclick="loadFromCloudManual()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--a),#0088cc);border:none;border-radius:8px;color:white;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">📥 Încarcă din Cloud</button>
+    <button onclick="createJSONBin()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--s),#cc9900);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">➕ Creează Bin Nou (Owner)</button>
+    <div id="sync-status" style="margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;font-size:.75rem;color:var(--dm);text-align:center;">
+      ☁️ JSONBin: <span id="sync-status-text">Se verifică...</span><br>
+      <span style="font-size:0.65rem;opacity:0.7;">Bin ID: <span id="sync-bin-id">-</span></span>
+    </div>
   </div>
 
   <div class="admin-section" id="admin-calculators">
@@ -1055,6 +1072,7 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <div id="cloud-sync-indicator" style="display:none;font-size:.7rem;color:#5865F2;margin-right:10px;">☁️ SYNC</div>
       <div id="user-expiry-info" style="font-size:.7rem;color:var(--dm);font-family:'JetBrains Mono',monospace;"></div>
       <button onclick="logout()" style="padding: 8px 16px; background: rgba(255,0,0,.1); border: 1px solid rgba(255,0,0,.3); border-radius: 8px; color: var(--owner); font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; font-size: 0.85rem; transition: all .3s;" onmouseover="this.style.background='rgba(255,0,0,.2)'" onmouseout="this.style.background='rgba(255,0,0,.1)'">Deconectare</button>
     </div>
@@ -1198,6 +1216,20 @@ const DISCORD_CONFIG = {
   REDIRECT_URI: 'https://robertodeveloper91.github.io/craft-b-zone-roleplay',
   SCOPE: 'identify'
 };
+
+const JSONBIN_CONFIG = {
+  BIN_ID: 'craft-bzone-data', // Schimbă acest ID cu cel real după ce creezi bin-ul
+  MASTER_KEY: '$2a$10$eO2nOjzxAkK4GPEkKCfSguELcnHTv3G7lWtWK03GdkwVskdVgqHpi',
+  ACCESS_KEY: '$2a$10$8q/aRXd9vAFsL0XnrticKeQkUPVsvkgM7vGisd/xAET6da/QsbKKS',
+  API_URL: 'https://api.jsonbin.io/v3/b'
+};
+
+// IMPORTANT: Trebuie să creezi manual bin-ul în JSONBin.io și să pui ID-ul aici!
+// 1. Mergi la https://jsonbin.io/
+// 2. Creează un bin nou cu numele "craft-bzone-data"
+// 3. Copiază ID-ul bin-ului (ex: 6781234567890abcdef12345)
+// 4. Înlocuiește 'craft-bzone-data' de mai sus cu ID-ul real
+
 const ACCESS_DURATION_DAYS = 31;
 const ACCESS_DURATION_MS = ACCESS_DURATION_DAYS * 24 * 60 * 60 * 1000;
 
@@ -1256,6 +1288,385 @@ const DEFAULT_DATA = {
     "Mina de Cupru": { mat:["Cupru","Aluminiu","Carbune"], emoji:"🏔️", desc:"Job: Miner" },
   }
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   ███  JSONBIN.IO SYNC  ███
+   ═══════════════════════════════════════════════════════════════ */
+
+let jsonbinData = null;
+let lastSyncTime = 0;
+const SYNC_INTERVAL = 30000; // 30 secunde
+
+async function fetchFromJSONBin() {
+  try {
+    const headers = new Headers();
+    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
+    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
+    
+    const response = await fetch(`${JSONBIN_CONFIG.API_URL}/${JSONBIN_CONFIG.BIN_ID}/latest`, {
+      method: 'GET',
+      headers: headers
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log('📦 Bin nu există - trebuie creat manual în JSONBin.io');
+        showNotification('⚠️ Creează bin în JSONBin.io!');
+        return null;
+      }
+      if (response.status === 401) {
+        console.error('❌ Autentificare eșuată - verifică cheile API');
+        showNotification('❌ Eroare autentificare JSONBin!');
+        return null;
+      }
+      if (response.status === 403) {
+        console.error('❌ Acces interzis - verifică permisiunile cheii');
+        showNotification('❌ Acces interzis JSONBin!');
+        return null;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('📥 Date încărcate din JSONBin:', data.record);
+    
+    // Verificăm structura răspunsului
+    if (!data.record) {
+      console.warn('⚠️ Răspuns JSONBin fără record:', data);
+      return null;
+    }
+    
+    return data.record;
+  } catch (err) {
+    console.error('❌ Eroare JSONBin fetch:', err);
+    showNotification('⚠️ Eroare conexiune JSONBin');
+    return null;
+  }
+}
+
+async function saveToJSONBin(data) {
+  try {
+    // Verificăm dacă datele sunt prea mari (>100KB pentru utilizatori gratuiti)
+    const dataSize = JSON.stringify(data).length;
+    if (dataSize > 100000) {
+      console.warn('⚠️ Datele sunt mari:', dataSize, 'bytes');
+    }
+    
+    const headers = new Headers();
+    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
+    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
+    headers.append('Content-Type', 'application/json');
+    
+    const response = await fetch(`${JSONBIN_CONFIG.API_URL}/${JSONBIN_CONFIG.BIN_ID}`, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.error('❌ Bin-ul nu există - creează-l manual în JSONBin.io');
+        showNotification('❌ Creează bin în JSONBin.io mai întâi!');
+        return false;
+      }
+      if (response.status === 401) {
+        console.error('❌ Autentificare eșuată la salvare');
+        showNotification('❌ Eroare autentificare la salvare!');
+        return false;
+      }
+      if (response.status === 413) {
+        console.error('❌ Date prea mari pentru planul gratuit');
+        showNotification('❌ Date prea mari! Redu datele sau upgrade.');
+        return false;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('💾 Date salvate în JSONBin:', result);
+    lastSyncTime = Date.now();
+    showNotification('☁️ Sincronizat cu cloud!');
+    return true;
+  } catch (err) {
+    console.error('❌ Eroare JSONBin save:', err);
+    showNotification('⚠️ Eroare sincronizare cloud: ' + err.message);
+    return false;
+  }
+}
+
+async function syncToCloud() {
+  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
+    console.log('⏭️ Skip sync - nu ai permisiuni');
+    return;
+  }
+  
+  const dataToSync = {
+    categories: categories,
+    subcategories: subcategories,
+    data: APP_DATA,
+    calculators: calculators,
+    members: members,
+    lastModified: new Date().toISOString(),
+    modifiedBy: currentUser.username
+  };
+  
+  await saveToJSONBin(dataToSync);
+}
+
+async function loadFromCloud() {
+  const cloudData = await fetchFromJSONBin();
+  
+  if (!cloudData) {
+    console.log('📍 Nu există date în cloud, se folosesc date locale');
+    return false;
+  }
+  
+  // Verifică dacă datele din cloud sunt mai noi decât cele locale
+  const cloudTime = new Date(cloudData.lastModified || 0).getTime();
+  const localTime = new Date(localStorage.getItem('craft_last_modified') || 0).getTime();
+  
+  if (cloudTime > localTime) {
+    console.log('☁️ Datele din cloud sunt mai noi, se actualizează...');
+    
+    if (cloudData.categories) {
+      categories = cloudData.categories;
+      saveCategories();
+    }
+    if (cloudData.subcategories) {
+      subcategories = cloudData.subcategories;
+      saveSubcategories();
+    }
+    if (cloudData.data) {
+      APP_DATA = cloudData.data;
+      MUNITIE = APP_DATA.MUNITIE;
+      ARME = APP_DATA.ARME;
+      COMP = APP_DATA.COMP;
+      MATARME = APP_DATA.MATARME;
+      MASA = APP_DATA.MASA;
+      LOC = APP_DATA.LOC;
+      saveAppData();
+    }
+    if (cloudData.calculators) {
+      calculators = cloudData.calculators;
+      saveCalculators();
+    }
+    if (cloudData.members) {
+      members = cloudData.members;
+      saveMembers();
+    }
+    
+    localStorage.setItem('craft_last_modified', cloudData.lastModified);
+    showNotification('📥 Date actualizate din cloud!');
+    return true;
+  } else {
+    console.log('💻 Datele locale sunt mai noi sau egale');
+    return false;
+  }
+}
+
+function setupAutoSync() {
+  // Auto-sync la fiecare 30 secunde pentru admin/owner
+  setInterval(async () => {
+    if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+      await syncToCloud();
+    }
+  }, SYNC_INTERVAL);
+  
+  // Sync la închiderea paginii
+  window.addEventListener('beforeunload', () => {
+    if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+      syncToCloud();
+    }
+  });
+}
+
+// Suprascrie funcțiile de salvare pentru a include sync
+const originalSaveCategories = saveCategories;
+saveCategories = function() {
+  originalSaveCategories();
+  localStorage.setItem('craft_last_modified', new Date().toISOString());
+  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+    debouncedSync();
+  }
+};
+
+const originalSaveSubcategories = saveSubcategories;
+saveSubcategories = function() {
+  originalSaveSubcategories();
+  localStorage.setItem('craft_last_modified', new Date().toISOString());
+  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+    debouncedSync();
+  }
+};
+
+const originalSaveAppData = saveAppData;
+saveAppData = function() {
+  originalSaveAppData();
+  localStorage.setItem('craft_last_modified', new Date().toISOString());
+  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+    debouncedSync();
+  }
+};
+
+const originalSaveCalculators = saveCalculators;
+saveCalculators = function() {
+  originalSaveCalculators();
+  localStorage.setItem('craft_last_modified', new Date().toISOString());
+  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+    debouncedSync();
+  }
+};
+
+const originalSaveMembers = saveMembers;
+saveMembers = function() {
+  originalSaveMembers();
+  localStorage.setItem('craft_last_modified', new Date().toISOString());
+  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+    debouncedSync();
+  }
+};
+
+// Debounce pentru sync
+let syncTimeout;
+function debouncedSync() {
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => syncToCloud(), 2000);
+}
+
+async function createJSONBin() {
+  if (!currentUser || !currentUser.isOwner) {
+    alert('Doar OWNER-ul poate crea bin-ul inițial!');
+    return;
+  }
+  
+  if (!confirm('Vrei să creezi un bin nou în JSONBin.io cu datele curente?')) {
+    return;
+  }
+  
+  try {
+    const headers = new Headers();
+    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
+    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
+    headers.append('Content-Type', 'application/json');
+    headers.append('X-Bin-Name', 'Craft B-Zone Data');
+    headers.append('X-Bin-Private', 'true');
+    
+    const initialData = {
+      categories: categories,
+      subcategories: subcategories,
+      data: APP_DATA,
+      calculators: calculators,
+      members: members,
+      createdAt: new Date().toISOString(),
+      createdBy: currentUser.username,
+      lastModified: new Date().toISOString(),
+      modifiedBy: currentUser.username
+    };
+    
+    const response = await fetch(`${JSONBIN_CONFIG.API_URL}`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(initialData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Bin creat:', result);
+    
+    // Actualizez configurația cu noul ID
+    const newBinId = result.metadata.id;
+    alert(`✅ Bin creat cu succes!\n\nID: ${newBinId}\n\nActualizează JSONBIN_CONFIG.BIN_ID în cod cu acest ID.`);
+    
+    showNotification('✅ Bin JSONBin creat! Vezi console pentru ID.');
+  } catch (err) {
+    console.error('❌ Eroare la creare bin:', err);
+    alert('❌ Eroare la creare bin: ' + err.message);
+  }
+}
+
+async function updateSyncStatus() {
+  const statusText = $('sync-status-text');
+  const binId = $('sync-bin-id');
+  
+  if (binId) binId.textContent = JSONBIN_CONFIG.BIN_ID;
+  
+  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
+    if (statusText) statusText.textContent = 'Doar pentru Owner/Admin';
+    return;
+  }
+  
+  try {
+    const headers = new Headers();
+    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
+    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
+    
+    const response = await fetch(`${JSONBIN_CONFIG.API_URL}/${JSONBIN_CONFIG.BIN_ID}/latest`, {
+      method: 'GET',
+      headers: headers
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (statusText) {
+        const lastMod = data.record?.lastModified ? new Date(data.record.lastModified).toLocaleString('ro-RO') : 'Necunoscut';
+        statusText.innerHTML = `<span style="color:var(--g)">✅ Conectat</span><br><span style="font-size:0.65rem;">Ultima mod: ${lastMod}</span>`;
+      }
+    } else if (response.status === 404) {
+      if (statusText) statusText.innerHTML = '<span style="color:var(--r)">❌ Bin inexistent</span><br><span style="font-size:0.65rem;">Creează bin nou</span>';
+    } else {
+      if (statusText) statusText.innerHTML = `<span style="color:var(--r)">❌ Eroare ${response.status}</span>`;
+    }
+  } catch (err) {
+    if (statusText) statusText.innerHTML = '<span style="color:var(--r)">❌ Eroare rețea</span>';
+  }
+}
+
+async function syncToCloudManual() {
+  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
+    alert('Doar OWNER/Admin pot sincroniza!');
+    return;
+  }
+  
+  const statusText = $('sync-status-text');
+  if (statusText) statusText.innerHTML = '⏳ Se sincronizează...';
+  
+  await syncToCloud();
+  
+  // Actualizez statusul după sincronizare
+  setTimeout(updateSyncStatus, 1000);
+}
+
+async function loadFromCloudManual() {
+  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
+    alert('Doar OWNER/Admin pot încărca din cloud!');
+    return;
+  }
+  
+  if (!confirm('⚠️ ATENȚIE: Datele locale vor fi suprascrise cu cele din cloud! Continui?')) {
+    return;
+  }
+  
+  const statusText = $('sync-status-text');
+  if (statusText) statusText.innerHTML = '⏳ Se încarcă...';
+  
+  const loaded = await loadFromCloud();
+  
+  if (loaded) {
+    renderMainCategories();
+    renderDynamicPanels();
+    renderCategoriesList();
+    renderSubcategoriesList();
+    renderDataTabs();
+    renderDataList();
+    renderMemberList();
+  }
+  
+  // Actualizez statusul indiferent de rezultat
+  setTimeout(updateSyncStatus, 500);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    ███  INCARCARE DATE  ███
@@ -1829,7 +2240,14 @@ function showLoginScreen() {
   $('admin-panel').style.display = 'none';
 }
 
-function showMainApp() {
+async function showMainApp() {
+  // Inițializare JSONBin sync pentru owner/admin
+  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
+    console.log('🔄 Inițializare JSONBin sync...');
+    await loadFromCloud();
+    setupAutoSync();
+  }
+  
   $('login-screen').style.display = 'none';
   $('main-app').classList.add('unlocked');
   $('user-avatar').src = currentUser.avatar;
@@ -1887,6 +2305,9 @@ function toggleAdmin() {
     renderDataTabs(); 
     renderDataList(); 
     updateStats();
+    renderCalculatorsList();
+    // Actualizez statusul JSONBin
+    setTimeout(updateSyncStatus, 100);
   } else {
     p.style.display = 'none';
   }
@@ -2741,30 +3162,6 @@ function addCalcSummary() {
 
 function removeCalcSummary(idx) {
   event.target.parentElement.remove();
-}
-
-function addCalcInput() {
-  // Deprecated - nu se mai foloseste
-}
-
-function removeCalcInput(idx) {
-  // Deprecated
-}
-
-function addCalcMaterial() {
-  // Deprecated
-}
-
-function removeCalcMaterial(idx) {
-  // Deprecated
-}
-
-function addCalcOutput() {
-  // Deprecated
-}
-
-function removeCalcOutput(idx) {
-  // Deprecated
 }
 
 function saveCalculator() {
@@ -3838,7 +4235,7 @@ function cA() {
 function initComp() {
   if (!$('cT')) return;
   
-  let h = `<div class="sc"><div class="st cyan">🔩 Componente Craft</div>
+  let h = `<div class="sc"><div class="st cyan">⚙️ Componente Craft</div>
   <table><tr><th>Componenta</th><th>Materiale Necesare</th><th>Descriere</th></tr>`;
   
   Object.entries(COMP).forEach(([k, v]) => {
