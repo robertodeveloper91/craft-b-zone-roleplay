@@ -161,10 +161,21 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px; background: rgba(0,0,0,.2);
   border: 1px solid var(--bd); border-radius: 10px;
+  cursor: move;
+  transition: all .3s;
+}
+.category-item:hover {
+  border-color: var(--owner);
+  background: rgba(255,0,0,.05);
 }
 .category-item.active {
   border-color: var(--g);
   background: rgba(0,255,136,.05);
+}
+.category-item.dragging {
+  opacity: 0.5;
+  border: 2px dashed var(--owner);
+  box-shadow: 0 0 20px var(--owner-glow);
 }
 .category-info {
   display: flex; align-items: center; gap: 10px;
@@ -195,15 +206,22 @@ body {
 }
 .data-list {
   max-height: 300px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 15px;
 }
 .data-item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px; background: rgba(0,0,0,.2); border-radius: 10px;
   border: 1px solid var(--bd); transition: all .3s;
+  cursor: move;
 }
 .data-item:hover { border-color: var(--owner); background: rgba(255,0,0,.05); }
+.data-item.dragging {
+  opacity: 0.5;
+  border: 2px dashed var(--owner);
+}
 .data-item-info { flex: 1; }
 .data-item-name {
   font-weight: 700; color: var(--tx); font-size: 0.9rem;
@@ -223,6 +241,8 @@ body {
 .icon-btn.edit:hover { background: rgba(255,215,0,.2); box-shadow: 0 0 10px rgba(255,215,0,.3); }
 .icon-btn.delete { background: rgba(255,51,102,.1); color: var(--r); border: 1px solid rgba(255,51,102,.3); }
 .icon-btn.delete:hover { background: rgba(255,51,102,.2); box-shadow: 0 0 10px rgba(255,51,102,.3); }
+.icon-btn.duplicate { background: rgba(0,212,255,.1); color: var(--a); border: 1px solid rgba(0,212,255,.3); }
+.icon-btn.duplicate:hover { background: rgba(0,212,255,.2); box-shadow: 0 0 10px rgba(0,212,255,.3); }
 
 .add-btn {
   width: 100%; padding: 14px; background: linear-gradient(135deg, var(--g), #00cc6a);
@@ -616,6 +636,7 @@ td b { color:var(--s) }
   background: linear-gradient(145deg, var(--cd), var(--cd2));
   color: var(--dm); cursor:pointer; transition:all .4s;
   position:relative; overflow:hidden;
+  user-select: none;
 }
 .cat-group-btn::before {
   content:''; position:absolute; top:0; left:0; width:100%; height:3px;
@@ -635,6 +656,11 @@ td b { color:var(--s) }
   box-shadow: 0 0 30px rgba(0,255,136,.12), inset 0 0 30px rgba(0,255,136,.03);
 }
 .cat-group-btn.legal.on::before { background: linear-gradient(90deg, var(--g), var(--a), var(--g)) }
+.cat-group-btn.dragging {
+  opacity: 0.5;
+  border: 2px dashed var(--owner);
+  box-shadow: 0 0 20px var(--owner-glow);
+}
 .cat-group-btn .cg-icon { font-size:1.4rem; display:block; margin-bottom:4px }
 .cat-group-btn .cg-sub {
   font-family:'JetBrains Mono',monospace; font-size:.55rem;
@@ -848,8 +874,13 @@ td b { color:var(--s) }
   padding: 15px; background: rgba(0,0,0,.2);
   border: 1px solid var(--bd); border-radius: 10px;
   transition: all .3s;
+  cursor: move;
 }
 .calculator-item:hover { border-color: var(--owner); background: rgba(255,0,0,.05); }
+.calculator-item.dragging {
+  opacity: 0.5;
+  border: 2px dashed var(--owner);
+}
 .calculator-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
@@ -891,16 +922,6 @@ td b { color:var(--s) }
 
 /* Anti-source protection */
 input, textarea, select { -webkit-user-select: text !important; -moz-user-select: text !important; user-select: text !important; }
-
-/* JSONBin Sync Animation */
-@keyframes cloudPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-.syncing {
-  animation: cloudPulse 1s infinite;
-  color: var(--s) !important;
-}
 
 </style>
 <noscript><meta http-equiv="refresh" content="0;url=about:blank"></noscript>
@@ -990,17 +1011,26 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
   </div>
 
   <div class="admin-section" id="admin-categories">
+    <div style="font-size:0.8rem;color:var(--dm);margin-bottom:10px;">
+      💡 Trage și plasează pentru a reordona categoriile
+    </div>
     <button class="add-btn secondary" onclick="openCategoryModal()">➕ Adauga Categorie Noua</button>
     <div class="category-list" id="category-list"></div>
   </div>
 
   <div class="admin-section" id="admin-subcategories">
+    <div style="font-size:0.8rem;color:var(--dm);margin-bottom:10px;">
+      💡 Trage și plasează pentru a reordona subcategoriile
+    </div>
     <button class="add-btn secondary" onclick="openSubcategoryModal()">➕ Adauga Subcategorie Noua</button>
     <div class="category-list" id="subcategory-list"></div>
   </div>
 
   <div class="admin-section" id="admin-data">
     <div class="category-tabs" id="data-categories"></div>
+    <div style="font-size:0.8rem;color:var(--dm);margin-bottom:10px;">
+      💡 Trage și plasează pentru a reordona datele
+    </div>
     <button class="add-btn" onclick="openAddModal()">➕ Adauga Intrare Noua</button>
     <div class="data-list" id="data-list"></div>
   </div>
@@ -1011,16 +1041,12 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
     <input type="file" id="import-file" style="display:none;" accept=".json" onchange="handleImport(event)">
     <button onclick="exportMembers()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--s),#cc9900);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">👥 Exporta Membri</button>
     <button onclick="clearExpiredMembers()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--r),#cc0033);border:none;border-radius:8px;color:white;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">🗑️ Sterge Membri Expirat</button>
-    <button onclick="syncToCloudManual()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,#5865F2,#4752C4);border:none;border-radius:8px;color:white;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">☁️ Sincronizează Acum</button>
-    <button onclick="loadFromCloudManual()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--a),#0088cc);border:none;border-radius:8px;color:white;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">📥 Încarcă din Cloud</button>
-    <button onclick="createJSONBin()" style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,var(--s),#cc9900);border:none;border-radius:8px;color:#000;font-family:'Rajdhani',sans-serif;font-weight:700;cursor:pointer;">➕ Creează Bin Nou (Owner)</button>
-    <div id="sync-status" style="margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;font-size:.75rem;color:var(--dm);text-align:center;">
-      ☁️ JSONBin: <span id="sync-status-text">Se verifică...</span><br>
-      <span style="font-size:0.65rem;opacity:0.7;">Bin ID: <span id="sync-bin-id">-</span></span>
-    </div>
   </div>
 
   <div class="admin-section" id="admin-calculators">
+    <div style="font-size:0.8rem;color:var(--dm);margin-bottom:10px;">
+      💡 Trage și plasează pentru a reordona calculatoarele
+    </div>
     <button class="add-btn" onclick="openCalculatorModal()">➕ Adauga Calculator Nou</button>
     <div class="calculator-list" id="calculator-list"></div>
   </div>
@@ -1072,7 +1098,6 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div id="cloud-sync-indicator" style="display:none;font-size:.7rem;color:#5865F2;margin-right:10px;">☁️ SYNC</div>
       <div id="user-expiry-info" style="font-size:.7rem;color:var(--dm);font-family:'JetBrains Mono',monospace;"></div>
       <button onclick="logout()" style="padding: 8px 16px; background: rgba(255,0,0,.1); border: 1px solid rgba(255,0,0,.3); border-radius: 8px; color: var(--owner); font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; font-size: 0.85rem; transition: all .3s;" onmouseover="this.style.background='rgba(255,0,0,.2)'" onmouseout="this.style.background='rgba(255,0,0,.1)'">Deconectare</button>
     </div>
@@ -1216,31 +1241,19 @@ const DISCORD_CONFIG = {
   REDIRECT_URI: 'https://robertodeveloper91.github.io/craft-b-zone-roleplay',
   SCOPE: 'identify'
 };
-
-const JSONBIN_CONFIG = {
-  BIN_ID: '69921517ae596e708f2d38ba', // Schimbă acest ID cu cel real după ce creezi bin-ul
-  MASTER_KEY: '$2a$10$eO2nOjzxAkK4GPEkKCfSguELcnHTv3G7lWtWK03GdkwVskdVgqHpi',
-  ACCESS_KEY: '$2a$10$8q/aRXd9vAFsL0XnrticKeQkUPVsvkgM7vGisd/xAET6da/QsbKKS',
-  API_URL: 'https://api.jsonbin.io/v3/b'
-};
-
-// IMPORTANT: Trebuie să creezi manual bin-ul în JSONBin.io și să pui ID-ul aici!
-// 1. Mergi la https://jsonbin.io/
-// 2. Creează un bin nou cu numele "craft-bzone-data"
-// 3. Copiază ID-ul bin-ului (ex: 6781234567890abcdef12345)
-// 4. Înlocuiește 'craft-bzone-data' de mai sus cu ID-ul real
-
 const ACCESS_DURATION_DAYS = 31;
 const ACCESS_DURATION_MS = ACCESS_DURATION_DAYS * 24 * 60 * 60 * 1000;
 
 const DEFAULT_CATEGORIES = [
-  { id: 'mafie', name: 'CRAFT MAFIE', icon: '🔫', sub: 'Cocaina • Gloante • Arme • Componente', color: 'mafie' },
+  { id: 'mafie', name: 'CRAFT MAFIE', icon: '🔫', sub: 'Cocaina • Cannabis • Tigari • Gloante • Arme • Componente', color: 'mafie' },
   { id: 'legal', name: 'CRAFT LEGAL', icon: '🔨', sub: 'Masa Craft • Locatii', color: 'legal' }
 ];
 
 const DEFAULT_SUBCATEGORIES = {
   mafie: [
     { id: 'cocaina', name: 'Cocaina', icon: '💎', type: 'calculator' },
+    { id: 'cannabis', name: 'Cannabis', icon: '🌿', type: 'calculator', calculatorId: 'calculator_cannabis' },
+    { id: 'tigari', name: 'Tigari', icon: '🚬', type: 'calculator', calculatorId: 'calculator_tigari' },
     { id: 'gloante', name: 'Gloante', icon: '🎯', type: 'calculator' },
     { id: 'arme', name: 'Arme', icon: '🔫', type: 'calculator' },
     { id: 'componente', name: 'Componente', icon: '⚙️', type: 'table' }
@@ -1288,385 +1301,6 @@ const DEFAULT_DATA = {
     "Mina de Cupru": { mat:["Cupru","Aluminiu","Carbune"], emoji:"🏔️", desc:"Job: Miner" },
   }
 };
-
-/* ═══════════════════════════════════════════════════════════════
-   ███  JSONBIN.IO SYNC  ███
-   ═══════════════════════════════════════════════════════════════ */
-
-let jsonbinData = null;
-let lastSyncTime = 0;
-const SYNC_INTERVAL = 30000; // 30 secunde
-
-async function fetchFromJSONBin() {
-  try {
-    const headers = new Headers();
-    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
-    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
-    
-    const response = await fetch(`${JSONBIN_CONFIG.API_URL}/${JSONBIN_CONFIG.BIN_ID}/latest`, {
-      method: 'GET',
-      headers: headers
-    });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.log('📦 Bin nu există - trebuie creat manual în JSONBin.io');
-        showNotification('⚠️ Creează bin în JSONBin.io!');
-        return null;
-      }
-      if (response.status === 401) {
-        console.error('❌ Autentificare eșuată - verifică cheile API');
-        showNotification('❌ Eroare autentificare JSONBin!');
-        return null;
-      }
-      if (response.status === 403) {
-        console.error('❌ Acces interzis - verifică permisiunile cheii');
-        showNotification('❌ Acces interzis JSONBin!');
-        return null;
-      }
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('📥 Date încărcate din JSONBin:', data.record);
-    
-    // Verificăm structura răspunsului
-    if (!data.record) {
-      console.warn('⚠️ Răspuns JSONBin fără record:', data);
-      return null;
-    }
-    
-    return data.record;
-  } catch (err) {
-    console.error('❌ Eroare JSONBin fetch:', err);
-    showNotification('⚠️ Eroare conexiune JSONBin');
-    return null;
-  }
-}
-
-async function saveToJSONBin(data) {
-  try {
-    // Verificăm dacă datele sunt prea mari (>100KB pentru utilizatori gratuiti)
-    const dataSize = JSON.stringify(data).length;
-    if (dataSize > 100000) {
-      console.warn('⚠️ Datele sunt mari:', dataSize, 'bytes');
-    }
-    
-    const headers = new Headers();
-    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
-    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
-    headers.append('Content-Type', 'application/json');
-    
-    const response = await fetch(`${JSONBIN_CONFIG.API_URL}/${JSONBIN_CONFIG.BIN_ID}`, {
-      method: 'PUT',
-      headers: headers,
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.error('❌ Bin-ul nu există - creează-l manual în JSONBin.io');
-        showNotification('❌ Creează bin în JSONBin.io mai întâi!');
-        return false;
-      }
-      if (response.status === 401) {
-        console.error('❌ Autentificare eșuată la salvare');
-        showNotification('❌ Eroare autentificare la salvare!');
-        return false;
-      }
-      if (response.status === 413) {
-        console.error('❌ Date prea mari pentru planul gratuit');
-        showNotification('❌ Date prea mari! Redu datele sau upgrade.');
-        return false;
-      }
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const result = await response.json();
-    console.log('💾 Date salvate în JSONBin:', result);
-    lastSyncTime = Date.now();
-    showNotification('☁️ Sincronizat cu cloud!');
-    return true;
-  } catch (err) {
-    console.error('❌ Eroare JSONBin save:', err);
-    showNotification('⚠️ Eroare sincronizare cloud: ' + err.message);
-    return false;
-  }
-}
-
-async function syncToCloud() {
-  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
-    console.log('⏭️ Skip sync - nu ai permisiuni');
-    return;
-  }
-  
-  const dataToSync = {
-    categories: categories,
-    subcategories: subcategories,
-    data: APP_DATA,
-    calculators: calculators,
-    members: members,
-    lastModified: new Date().toISOString(),
-    modifiedBy: currentUser.username
-  };
-  
-  await saveToJSONBin(dataToSync);
-}
-
-async function loadFromCloud() {
-  const cloudData = await fetchFromJSONBin();
-  
-  if (!cloudData) {
-    console.log('📍 Nu există date în cloud, se folosesc date locale');
-    return false;
-  }
-  
-  // Verifică dacă datele din cloud sunt mai noi decât cele locale
-  const cloudTime = new Date(cloudData.lastModified || 0).getTime();
-  const localTime = new Date(localStorage.getItem('craft_last_modified') || 0).getTime();
-  
-  if (cloudTime > localTime) {
-    console.log('☁️ Datele din cloud sunt mai noi, se actualizează...');
-    
-    if (cloudData.categories) {
-      categories = cloudData.categories;
-      saveCategories();
-    }
-    if (cloudData.subcategories) {
-      subcategories = cloudData.subcategories;
-      saveSubcategories();
-    }
-    if (cloudData.data) {
-      APP_DATA = cloudData.data;
-      MUNITIE = APP_DATA.MUNITIE;
-      ARME = APP_DATA.ARME;
-      COMP = APP_DATA.COMP;
-      MATARME = APP_DATA.MATARME;
-      MASA = APP_DATA.MASA;
-      LOC = APP_DATA.LOC;
-      saveAppData();
-    }
-    if (cloudData.calculators) {
-      calculators = cloudData.calculators;
-      saveCalculators();
-    }
-    if (cloudData.members) {
-      members = cloudData.members;
-      saveMembers();
-    }
-    
-    localStorage.setItem('craft_last_modified', cloudData.lastModified);
-    showNotification('📥 Date actualizate din cloud!');
-    return true;
-  } else {
-    console.log('💻 Datele locale sunt mai noi sau egale');
-    return false;
-  }
-}
-
-function setupAutoSync() {
-  // Auto-sync la fiecare 30 secunde pentru admin/owner
-  setInterval(async () => {
-    if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-      await syncToCloud();
-    }
-  }, SYNC_INTERVAL);
-  
-  // Sync la închiderea paginii
-  window.addEventListener('beforeunload', () => {
-    if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-      syncToCloud();
-    }
-  });
-}
-
-// Suprascrie funcțiile de salvare pentru a include sync
-const originalSaveCategories = saveCategories;
-saveCategories = function() {
-  originalSaveCategories();
-  localStorage.setItem('craft_last_modified', new Date().toISOString());
-  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-    debouncedSync();
-  }
-};
-
-const originalSaveSubcategories = saveSubcategories;
-saveSubcategories = function() {
-  originalSaveSubcategories();
-  localStorage.setItem('craft_last_modified', new Date().toISOString());
-  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-    debouncedSync();
-  }
-};
-
-const originalSaveAppData = saveAppData;
-saveAppData = function() {
-  originalSaveAppData();
-  localStorage.setItem('craft_last_modified', new Date().toISOString());
-  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-    debouncedSync();
-  }
-};
-
-const originalSaveCalculators = saveCalculators;
-saveCalculators = function() {
-  originalSaveCalculators();
-  localStorage.setItem('craft_last_modified', new Date().toISOString());
-  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-    debouncedSync();
-  }
-};
-
-const originalSaveMembers = saveMembers;
-saveMembers = function() {
-  originalSaveMembers();
-  localStorage.setItem('craft_last_modified', new Date().toISOString());
-  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-    debouncedSync();
-  }
-};
-
-// Debounce pentru sync
-let syncTimeout;
-function debouncedSync() {
-  clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(() => syncToCloud(), 2000);
-}
-
-async function createJSONBin() {
-  if (!currentUser || !currentUser.isOwner) {
-    alert('Doar OWNER-ul poate crea bin-ul inițial!');
-    return;
-  }
-  
-  if (!confirm('Vrei să creezi un bin nou în JSONBin.io cu datele curente?')) {
-    return;
-  }
-  
-  try {
-    const headers = new Headers();
-    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
-    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
-    headers.append('Content-Type', 'application/json');
-    headers.append('X-Bin-Name', 'Craft B-Zone Data');
-    headers.append('X-Bin-Private', 'true');
-    
-    const initialData = {
-      categories: categories,
-      subcategories: subcategories,
-      data: APP_DATA,
-      calculators: calculators,
-      members: members,
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser.username,
-      lastModified: new Date().toISOString(),
-      modifiedBy: currentUser.username
-    };
-    
-    const response = await fetch(`${JSONBIN_CONFIG.API_URL}`, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(initialData)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const result = await response.json();
-    console.log('✅ Bin creat:', result);
-    
-    // Actualizez configurația cu noul ID
-    const newBinId = result.metadata.id;
-    alert(`✅ Bin creat cu succes!\n\nID: ${newBinId}\n\nActualizează JSONBIN_CONFIG.BIN_ID în cod cu acest ID.`);
-    
-    showNotification('✅ Bin JSONBin creat! Vezi console pentru ID.');
-  } catch (err) {
-    console.error('❌ Eroare la creare bin:', err);
-    alert('❌ Eroare la creare bin: ' + err.message);
-  }
-}
-
-async function updateSyncStatus() {
-  const statusText = $('sync-status-text');
-  const binId = $('sync-bin-id');
-  
-  if (binId) binId.textContent = JSONBIN_CONFIG.BIN_ID;
-  
-  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
-    if (statusText) statusText.textContent = 'Doar pentru Owner/Admin';
-    return;
-  }
-  
-  try {
-    const headers = new Headers();
-    headers.append('X-Master-Key', JSONBIN_CONFIG.MASTER_KEY);
-    headers.append('X-Access-Key', JSONBIN_CONFIG.ACCESS_KEY);
-    
-    const response = await fetch(`${JSONBIN_CONFIG.API_URL}/${JSONBIN_CONFIG.BIN_ID}/latest`, {
-      method: 'GET',
-      headers: headers
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (statusText) {
-        const lastMod = data.record?.lastModified ? new Date(data.record.lastModified).toLocaleString('ro-RO') : 'Necunoscut';
-        statusText.innerHTML = `<span style="color:var(--g)">✅ Conectat</span><br><span style="font-size:0.65rem;">Ultima mod: ${lastMod}</span>`;
-      }
-    } else if (response.status === 404) {
-      if (statusText) statusText.innerHTML = '<span style="color:var(--r)">❌ Bin inexistent</span><br><span style="font-size:0.65rem;">Creează bin nou</span>';
-    } else {
-      if (statusText) statusText.innerHTML = `<span style="color:var(--r)">❌ Eroare ${response.status}</span>`;
-    }
-  } catch (err) {
-    if (statusText) statusText.innerHTML = '<span style="color:var(--r)">❌ Eroare rețea</span>';
-  }
-}
-
-async function syncToCloudManual() {
-  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
-    alert('Doar OWNER/Admin pot sincroniza!');
-    return;
-  }
-  
-  const statusText = $('sync-status-text');
-  if (statusText) statusText.innerHTML = '⏳ Se sincronizează...';
-  
-  await syncToCloud();
-  
-  // Actualizez statusul după sincronizare
-  setTimeout(updateSyncStatus, 1000);
-}
-
-async function loadFromCloudManual() {
-  if (!currentUser || (!currentUser.isOwner && !currentUser.isAdmin)) {
-    alert('Doar OWNER/Admin pot încărca din cloud!');
-    return;
-  }
-  
-  if (!confirm('⚠️ ATENȚIE: Datele locale vor fi suprascrise cu cele din cloud! Continui?')) {
-    return;
-  }
-  
-  const statusText = $('sync-status-text');
-  if (statusText) statusText.innerHTML = '⏳ Se încarcă...';
-  
-  const loaded = await loadFromCloud();
-  
-  if (loaded) {
-    renderMainCategories();
-    renderDynamicPanels();
-    renderCategoriesList();
-    renderSubcategoriesList();
-    renderDataTabs();
-    renderDataList();
-    renderMemberList();
-  }
-  
-  // Actualizez statusul indiferent de rezultat
-  setTimeout(updateSyncStatus, 500);
-}
 
 /* ═══════════════════════════════════════════════════════════════
    ███  INCARCARE DATE  ███
@@ -1721,79 +1355,30 @@ let LOC = APP_DATA.LOC;
 function loadCalculators() {
   const saved = localStorage.getItem('craft_calculators');
   
-  // Calculator COCAINĂ pre-configurat ca exemplu
-  const defaultCalculator = {
-    id: 'calculator_cocaina',
-    name: 'Procesare Cocaina',
-    icon: '💎',
-    tabId: 'cocaina',
-    inputLabel: 'Numar Frunze de Coca',
-    inputIcon: '🌿',
-    inputPlaceholder: '560',
-    steps: [
-      {
-        name: 'Frunze de Coca',
-        icon: '🌿',
-        color: 'gn',
-        numberLabel: 'Frunze',
-        weightLabel: 'kg'
-      },
-      {
-        name: 'Sticle (Extractie)',
-        icon: '🧪',
-        color: 'bl',
-        numberLabel: 'Sticle',
-        weightLabel: 'kg'
-      },
-      {
-        name: 'Tavi (Uscare)',
-        icon: '🍳',
-        color: 'gl',
-        numberLabel: 'Tavi',
-        weightLabel: 'kg'
-      },
-      {
-        name: 'Brichete (Presare)',
-        icon: '🧱',
-        color: 'rd',
-        numberLabel: 'Brichete',
-        weightLabel: 'kg'
-      },
-      {
-        name: 'Pungi (Impartire)',
-        icon: '👜',
-        color: 'vt',
-        numberLabel: 'Pungi',
-        weightLabel: 'kg'
-      },
-      {
-        name: 'Plicuri (Final)',
-        icon: '📦',
-        color: 'gn',
-        numberLabel: 'Plicuri',
-        weightLabel: 'kg'
-      }
-    ],
-    summary: [
-      {
-        label: 'Total KG Procesate',
-        icon: '⚖️',
-        id: 'total_kg'
-      },
-      {
-        label: 'Total Plicuri',
-        icon: '📦',
-        id: 'total_plicuri'
-      },
-      {
-        label: 'Profit Estimat',
-        icon: '💰',
-        id: 'profit'
-      }
-    ],
-    formula: `const f = inputs.cantitate;
-
-// Calculez fiecare etapa: [numar_bucati, kg]
+  // Calculatoare pre-configurate
+  const defaultCalculators = [
+    {
+      id: 'calculator_cocaina',
+      name: 'Procesare Cocaina',
+      icon: '💎',
+      tabId: 'cocaina',
+      inputLabel: 'Numar Frunze de Coca',
+      inputIcon: '🌿',
+      inputPlaceholder: '560',
+      steps: [
+        { name: 'Frunze de Coca', icon: '🌿', color: 'gn', numberLabel: 'Frunze', weightLabel: 'kg' },
+        { name: 'Sticle (Extractie)', icon: '🧪', color: 'bl', numberLabel: 'Sticle', weightLabel: 'kg' },
+        { name: 'Tavi (Uscare)', icon: '🍳', color: 'gl', numberLabel: 'Tavi', weightLabel: 'kg' },
+        { name: 'Brichete (Presare)', icon: '🧱', color: 'rd', numberLabel: 'Brichete', weightLabel: 'kg' },
+        { name: 'Pungi (Impartire)', icon: '👜', color: 'vt', numberLabel: 'Pungi', weightLabel: 'kg' },
+        { name: 'Plicuri (Final)', icon: '📦', color: 'gn', numberLabel: 'Plicuri', weightLabel: 'kg' }
+      ],
+      summary: [
+        { label: 'Total KG Procesate', icon: '⚖️', id: 'total_kg' },
+        { label: 'Total Plicuri', icon: '📦', id: 'total_plicuri' },
+        { label: 'Profit Estimat', icon: '💰', id: 'profit' }
+      ],
+      formula: `const f = inputs.cantitate;
 const fk = 0.04 * f;
 const sn = 0.05 * f;
 const sk = 0.4 * sn;
@@ -1805,39 +1390,81 @@ const pn = 2 * bn;
 const pk = 0.03 * pn;
 const ln = pn;
 const lk = 0.2 * ln;
-
-const steps = [
-  [f, fk],
-  [sn, sk],
-  [tn, tk],
-  [bn, bk],
-  [pn, pk],
-  [ln, lk]
-];
-
-const summary = {
-  total_kg: (fk + sk + tk + bk + pk + lk).toFixed(2),
-  total_plicuri: Math.floor(ln),
-  profit: Math.floor(ln * 13600)
-};
-
+const steps = [[f, fk], [sn, sk], [tn, tk], [bn, bk], [pn, pk], [ln, lk]];
+const summary = { total_kg: (fk + sk + tk + bk + pk + lk).toFixed(2), total_plicuri: Math.floor(ln), profit: Math.floor(ln * 13600) };
 return { steps, summary };`
-  };
+    },
+    {
+      id: 'calculator_cannabis',
+      name: 'Procesare Cannabis',
+      icon: '🌿',
+      tabId: 'cannabis',
+      inputLabel: 'Numar Frunze Cannabis',
+      inputIcon: '🍃',
+      inputPlaceholder: '100',
+      steps: [
+        { name: 'Frunze Cannabis', icon: '🍃', color: 'gn', numberLabel: 'Frunze', weightLabel: 'g' },
+        { name: 'Joint-uri Final', icon: '🚬', color: 'vt', numberLabel: 'Jointuri', weightLabel: 'g' }
+      ],
+      summary: [
+        { label: 'Total Jointuri', icon: '🚬', id: 'total_joints' },
+        { label: 'Foite Necesare', icon: '📄', id: 'total_foite' },
+        { label: 'Profit Estimat', icon: '💰', id: 'profit' }
+      ],
+      formula: `const f = inputs.cantitate;
+const joints = Math.floor(f / 20);
+const foite = joints;
+const steps = [[f, f * 0.5], [joints, joints * 0.8]];
+const summary = { total_joints: joints, total_foite: foite, profit: Math.floor(joints * 2500) };
+return { steps, summary };`
+    },
+    {
+      id: 'calculator_tigari',
+      name: 'Procesare Tigari',
+      icon: '🚬',
+      tabId: 'tigari',
+      inputLabel: 'Numar Frunze Tutun',
+      inputIcon: '🍂',
+      inputPlaceholder: '100',
+      steps: [
+        { name: 'Frunze Tutun', icon: '🍂', color: 'cu', numberLabel: 'Frunze', weightLabel: 'g' },
+        { name: 'Tigari Final', icon: '🚬', color: 'rd', numberLabel: 'Tigari', weightLabel: 'g' }
+      ],
+      summary: [
+        { label: 'Total Tigari', icon: '🚬', id: 'total_tigari' },
+        { label: 'Foite Necesare', icon: '📄', id: 'total_foite' },
+        { label: 'Profit Estimat', icon: '💰', id: 'profit' }
+      ],
+      formula: `const f = inputs.cantitate;
+const tigari = Math.floor(f / 20);
+const foite = tigari;
+const steps = [[f, f * 0.5], [tigari, tigari * 1.0]];
+const summary = { total_tigari: tigari, total_foite: foite, profit: Math.floor(tigari * 1200) };
+return { steps, summary };`
+    }
+  ];
   
   if (saved) {
     const parsedCalcs = JSON.parse(saved);
-    // Verifică dacă există deja calculatorul de cocaină
+    // Verifică dacă există calculatoarele default
     const hasCocaina = parsedCalcs.some(c => c.id === 'calculator_cocaina');
-    if (!hasCocaina) {
-      // Adaugă cocaina la început
-      parsedCalcs.unshift(defaultCalculator);
-      localStorage.setItem('craft_calculators', JSON.stringify(parsedCalcs));
-      return parsedCalcs;
+    const hasCannabis = parsedCalcs.some(c => c.id === 'calculator_cannabis');
+    const hasTigari = parsedCalcs.some(c => c.id === 'calculator_tigari');
+    
+    let merged = [...parsedCalcs];
+    
+    if (!hasCocaina) merged.unshift(defaultCalculators[0]);
+    if (!hasCannabis) merged.push(defaultCalculators[1]);
+    if (!hasTigari) merged.push(defaultCalculators[2]);
+    
+    if (!hasCocaina || !hasCannabis || !hasTigari) {
+      localStorage.setItem('craft_calculators', JSON.stringify(merged));
     }
-    return parsedCalcs;
+    
+    return merged;
   }
   
-  return [defaultCalculator];
+  return defaultCalculators;
 }
 
 function saveCalculators() {
@@ -2240,14 +1867,7 @@ function showLoginScreen() {
   $('admin-panel').style.display = 'none';
 }
 
-async function showMainApp() {
-  // Inițializare JSONBin sync pentru owner/admin
-  if (currentUser && (currentUser.isOwner || currentUser.isAdmin)) {
-    console.log('🔄 Inițializare JSONBin sync...');
-    await loadFromCloud();
-    setupAutoSync();
-  }
-  
+function showMainApp() {
   $('login-screen').style.display = 'none';
   $('main-app').classList.add('unlocked');
   $('user-avatar').src = currentUser.avatar;
@@ -2304,16 +1924,13 @@ function toggleAdmin() {
     renderSubcategoriesList(); 
     renderDataTabs(); 
     renderDataList(); 
-    updateStats();
     renderCalculatorsList();
-    // Actualizez statusul JSONBin
-    setTimeout(updateSyncStatus, 100);
+    updateStats();
   } else {
     p.style.display = 'none';
   }
 }
 
-// ✅ CORECTAT: Adăugat parametrul clickedBtn
 function switchAdminTab(tab, clickedBtn) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
@@ -2619,7 +2236,7 @@ function exportMembers() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ███  MANAGER CATEGORII  ███
+   ███  MANAGER CATEGORII CU DRAG & DROP  ███
    ═══════════════════════════════════════════════════════════════ */
 
 function renderCategoriesList() {
@@ -2629,6 +2246,8 @@ function renderCategoriesList() {
   categories.forEach((cat, index) => {
     const item = document.createElement('div');
     item.className = 'category-item ' + (index === 0 ? 'active' : '');
+    item.draggable = true;
+    item.dataset.index = index;
     item.innerHTML = `
       <div class="category-info">
         <span class="category-icon">${cat.icon}</span>
@@ -2642,8 +2261,71 @@ function renderCategoriesList() {
         <button class="icon-btn delete" onclick="deleteCategory(${index})">🗑️</button>
       </div>
     `;
+    
+    // Drag & Drop events
+    item.addEventListener('dragstart', handleDragStart);
+    item.addEventListener('dragover', handleDragOver);
+    item.addEventListener('drop', handleDrop);
+    item.addEventListener('dragend', handleDragEnd);
+    
     container.appendChild(item);
   });
+}
+
+function handleDragStart(e) {
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', e.target.dataset.index);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  
+  const container = e.currentTarget.parentElement;
+  const afterElement = getDragAfterElement(container, e.clientY);
+  const draggable = document.querySelector('.dragging');
+  
+  if (afterElement == null) {
+    container.appendChild(draggable);
+  } else {
+    container.insertBefore(draggable, afterElement);
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+  const newIndex = parseInt(e.currentTarget.dataset.index);
+  
+  if (draggedIndex !== newIndex) {
+    // Reordonează array-ul
+    const item = categories.splice(draggedIndex, 1)[0];
+    categories.splice(newIndex, 0, item);
+    saveCategories();
+    renderCategoriesList();
+    renderMainCategories();
+    showNotification('📁 Categoriile au fost reordonate!');
+  }
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.category-item:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function openCategoryModal(editIndex = null) {
@@ -2770,7 +2452,7 @@ function saveCategory() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ███  MANAGER SUBCATEGORII  ███
+   ███  MANAGER SUBCATEGORII CU DRAG & DROP  ███
    ═══════════════════════════════════════════════════════════════ */
 
 function renderSubcategoriesList() {
@@ -2790,10 +2472,17 @@ function renderSubcategoriesList() {
       empty.textContent = 'Nu exista subcategorii';
       container.appendChild(empty);
     } else {
+      const subContainer = document.createElement('div');
+      subContainer.className = 'subcategory-container';
+      subContainer.dataset.catId = cat.id;
+      
       subs.forEach((sub, index) => {
         const item = document.createElement('div');
         item.className = 'category-item';
         item.style.marginLeft = '20px';
+        item.draggable = true;
+        item.dataset.index = index;
+        item.dataset.catId = cat.id;
         item.innerHTML = `
           <div class="category-info">
             <span class="category-icon">${sub.icon}</span>
@@ -2807,10 +2496,68 @@ function renderSubcategoriesList() {
             <button class="icon-btn delete" onclick="deleteSubcategory('${cat.id}', ${index})">🗑️</button>
           </div>
         `;
-        container.appendChild(item);
+        
+        // Drag & Drop events pentru subcategorii
+        item.addEventListener('dragstart', handleSubDragStart);
+        item.addEventListener('dragover', handleSubDragOver);
+        item.addEventListener('drop', handleSubDrop);
+        item.addEventListener('dragend', handleSubDragEnd);
+        
+        subContainer.appendChild(item);
       });
+      
+      container.appendChild(subContainer);
     }
   });
+}
+
+let draggedSub = null;
+
+function handleSubDragStart(e) {
+  e.target.classList.add('dragging');
+  draggedSub = {
+    index: parseInt(e.target.dataset.index),
+    catId: e.target.dataset.catId
+  };
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleSubDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  
+  const container = e.currentTarget.parentElement;
+  const afterElement = getDragAfterElement(container, e.clientY);
+  const draggable = document.querySelector('.dragging');
+  
+  if (afterElement == null) {
+    container.appendChild(draggable);
+  } else {
+    container.insertBefore(draggable, afterElement);
+  }
+}
+
+function handleSubDrop(e) {
+  e.preventDefault();
+  const targetCatId = e.currentTarget.dataset.catId;
+  const targetIndex = parseInt(e.currentTarget.dataset.index);
+  
+  if (draggedSub && draggedSub.catId === targetCatId && draggedSub.index !== targetIndex) {
+    // Reordonează în aceeași categorie
+    const subs = subcategories[targetCatId];
+    const item = subs.splice(draggedSub.index, 1)[0];
+    subs.splice(targetIndex, 0, item);
+    saveSubcategories();
+    renderSubcategoriesList();
+    renderDynamicPanels();
+    showNotification('📂 Subcategoriile au fost reordonate!');
+  }
+  
+  draggedSub = null;
+}
+
+function handleSubDragEnd(e) {
+  e.target.classList.remove('dragging');
 }
 
 function openSubcategoryModal(editCatId = null, editIndex = null) {
@@ -2931,7 +2678,7 @@ function saveSubcategory() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ███  MANAGER CALCULATOARE PERSONALIZATE  ███
+   ███  MANAGER CALCULATOARE PERSONALIZATE CU DUPLICATE  ███
    ═══════════════════════════════════════════════════════════════ */
 
 function renderCalculatorsList() {
@@ -2946,6 +2693,8 @@ function renderCalculatorsList() {
   calculators.forEach((calc, index) => {
     const item = document.createElement('div');
     item.className = 'calculator-item';
+    item.draggable = true;
+    item.dataset.index = index;
     
     const stepsHtml = calc.steps.map(step => {
       const label = step.numberLabel ? `${step.numberLabel}` : 'Buc';
@@ -2967,6 +2716,7 @@ function renderCalculatorsList() {
           </div>
         </div>
         <div class="data-item-actions">
+          <button class="icon-btn duplicate" onclick="duplicateCalculator(${index})" title="Duplica">📋</button>
           <button class="icon-btn edit" onclick="editCalculator(${index})">✏️</button>
           <button class="icon-btn delete" onclick="deleteCalculator(${index})">🗑️</button>
         </div>
@@ -2981,8 +2731,74 @@ function renderCalculatorsList() {
       </div>
     `;
     
+    // Drag & Drop events pentru calculatoare
+    item.addEventListener('dragstart', handleCalcDragStart);
+    item.addEventListener('dragover', handleCalcDragOver);
+    item.addEventListener('drop', handleCalcDrop);
+    item.addEventListener('dragend', handleCalcDragEnd);
+    
     container.appendChild(item);
   });
+}
+
+let draggedCalc = null;
+
+function handleCalcDragStart(e) {
+  e.target.classList.add('dragging');
+  draggedCalc = parseInt(e.target.dataset.index);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleCalcDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  
+  const container = e.currentTarget.parentElement;
+  const afterElement = getDragAfterElement(container, e.clientY);
+  const draggable = document.querySelector('.dragging');
+  
+  if (afterElement == null) {
+    container.appendChild(draggable);
+  } else {
+    container.insertBefore(draggable, afterElement);
+  }
+}
+
+function handleCalcDrop(e) {
+  e.preventDefault();
+  const targetIndex = parseInt(e.currentTarget.dataset.index);
+  
+  if (draggedCalc !== null && draggedCalc !== targetIndex) {
+    // Reordonează array-ul
+    const item = calculators.splice(draggedCalc, 1)[0];
+    calculators.splice(targetIndex, 0, item);
+    saveCalculators();
+    renderCalculatorsList();
+    renderDynamicPanels();
+    showNotification('📊 Calculatoarele au fost reordonate!');
+  }
+  
+  draggedCalc = null;
+}
+
+function handleCalcDragEnd(e) {
+  e.target.classList.remove('dragging');
+}
+
+function duplicateCalculator(index) {
+  const calc = calculators[index];
+  const newCalc = JSON.parse(JSON.stringify(calc));
+  
+  // Generează ID unic
+  newCalc.id = calc.id + '_copy_' + Date.now();
+  newCalc.name = calc.name + ' (Copie)';
+  
+  // Adaugă după original
+  calculators.splice(index + 1, 0, newCalc);
+  saveCalculators();
+  renderCalculatorsList();
+  renderDynamicPanels();
+  showNotification(`📋 Calculator "${calc.name}" duplicat!`);
 }
 
 function openCalculatorModal(editIndex = null) {
@@ -3273,7 +3089,7 @@ function deleteCalculator(index) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ███  RANDARE CATEGORII IN MAIN APP  ███
+   ███  RANDARE CATEGORII IN MAIN APP CU DRAG & DROP  ███
    ═══════════════════════════════════════════════════════════════ */
 
 function renderMainCategories() {
@@ -3283,17 +3099,84 @@ function renderMainCategories() {
   categories.forEach((cat, index) => {
     const btn = document.createElement('div');
     btn.className = `cat-group-btn ${cat.color} ${index === 0 ? 'on' : ''}`;
-    // ✅ CORECTAT: Folosim function pentru a păstra referința la element
+    btn.dataset.index = index;
+    btn.dataset.catId = cat.id;
     btn.onclick = function() { showCategory(cat.id, this); };
     btn.innerHTML = `
       <span class="cg-icon">${cat.icon}</span>${cat.name}
       <div class="cg-sub">${cat.sub}</div>
     `;
+    
+    // Drag & Drop pentru categorii în main app
+    btn.draggable = true;
+    btn.addEventListener('dragstart', handleMainCatDragStart);
+    btn.addEventListener('dragover', handleMainCatDragOver);
+    btn.addEventListener('drop', handleMainCatDrop);
+    btn.addEventListener('dragend', handleMainCatDragEnd);
+    
     container.appendChild(btn);
   });
 }
 
-// ✅ CORECTAT: Adăugat parametrul clickedElement
+let draggedMainCat = null;
+
+function handleMainCatDragStart(e) {
+  e.target.classList.add('dragging');
+  draggedMainCat = parseInt(e.target.dataset.index);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleMainCatDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  
+  const container = e.currentTarget.parentElement;
+  const afterElement = getDragAfterElementHorizontal(container, e.clientX);
+  const draggable = document.querySelector('.cat-group-btn.dragging');
+  
+  if (afterElement == null) {
+    container.appendChild(draggable);
+  } else {
+    container.insertBefore(draggable, afterElement);
+  }
+}
+
+function handleMainCatDrop(e) {
+  e.preventDefault();
+  const targetIndex = parseInt(e.currentTarget.dataset.index);
+  
+  if (draggedMainCat !== null && draggedMainCat !== targetIndex) {
+    // Reordonează array-ul
+    const item = categories.splice(draggedMainCat, 1)[0];
+    categories.splice(targetIndex, 0, item);
+    saveCategories();
+    renderMainCategories();
+    renderDynamicPanels();
+    showNotification('📁 Categoriile au fost reordonate!');
+  }
+  
+  draggedMainCat = null;
+}
+
+function handleMainCatDragEnd(e) {
+  e.target.classList.remove('dragging');
+}
+
+function getDragAfterElementHorizontal(container, x) {
+  const draggableElements = [...container.querySelectorAll('.cat-group-btn:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = x - box.left - box.width / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
 function showCategory(catId, clickedElement) {
   // Update buttons
   document.querySelectorAll('.cat-group-btn').forEach(btn => btn.classList.remove('on'));
@@ -3305,7 +3188,6 @@ function showCategory(catId, clickedElement) {
   if (panel) panel.classList.add('on');
 }
 
-// ✅ CORECTAT: Adăugat parametrul clickedTab
 function switchSubTab(category, tabId, clickedTab) {
   const container = $(`panel_${category}`);
   container.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
@@ -3332,7 +3214,6 @@ function renderDynamicPanels() {
     
     if (subs.length > 0) {
       subTabsHTML = `<div class="sub-tabs ${cat.color}" id="tabs_${cat.id}">` + 
-        // ✅ CORECTAT: Adăugat 'this' ca parametru pentru switchSubTab
         subs.map((sub, i) => `<div class="tb ${i === 0 ? 'on' : ''}" onclick="switchSubTab('${cat.id}', '${sub.id}', this)">${sub.icon} ${sub.name}</div>`).join('') + 
         '</div>';
       
@@ -3495,7 +3376,7 @@ function generateCardsContent(catId, sub) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ███  MANAGER DATE  ███
+   ███  MANAGER DATE CU DRAG & DROP  ███
    ═══════════════════════════════════════════════════════════════ */
 
 function renderDataTabs() {
@@ -3537,12 +3418,99 @@ function renderDataList() {
     case 'locatii': data = LOC; break;
   }
   
-  Object.entries(data).forEach(([key, value]) => {
+  // Convertim obiectul în array pentru a putea reordona
+  const dataArray = Object.entries(data);
+  
+  dataArray.forEach(([key, value], index) => {
     const item = document.createElement('div');
     item.className = 'data-item';
+    item.draggable = true;
+    item.dataset.index = index;
+    item.dataset.key = key;
     item.innerHTML = renderItemHTML(key, value);
+    
+    // Drag & Drop events pentru date
+    item.addEventListener('dragstart', handleDataDragStart);
+    item.addEventListener('dragover', handleDataDragOver);
+    item.addEventListener('drop', handleDataDrop);
+    item.addEventListener('dragend', handleDataDragEnd);
+    
     container.appendChild(item);
   });
+}
+
+let draggedData = null;
+
+function handleDataDragStart(e) {
+  e.target.classList.add('dragging');
+  draggedData = {
+    index: parseInt(e.target.dataset.index),
+    key: e.target.dataset.key
+  };
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDataDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  
+  const container = e.currentTarget.parentElement;
+  const afterElement = getDragAfterElement(container, e.clientY);
+  const draggable = document.querySelector('.data-item.dragging');
+  
+  if (afterElement == null) {
+    container.appendChild(draggable);
+  } else {
+    container.insertBefore(draggable, afterElement);
+  }
+}
+
+function handleDataDrop(e) {
+  e.preventDefault();
+  const targetIndex = parseInt(e.currentTarget.dataset.index);
+  
+  if (draggedData && draggedData.index !== targetIndex) {
+    // Reordonează datele în obiect
+    let data;
+    switch(currentDataCategory) {
+      case 'arme': data = ARME; break;
+      case 'munitie': data = MUNITIE; break;
+      case 'componente': data = COMP; break;
+      case 'masa': data = MASA; break;
+      case 'locatii': data = LOC; break;
+    }
+    
+    // Convertim în array, reordonăm și convertim înapoi
+    const entries = Object.entries(data);
+    const [removed] = entries.splice(draggedData.index, 1);
+    entries.splice(targetIndex, 0, removed);
+    
+    // Reconstruim obiectul
+    const newData = {};
+    entries.forEach(([k, v]) => {
+      newData[k] = v;
+    });
+    
+    // Salvăm
+    switch(currentDataCategory) {
+      case 'arme': APP_DATA.ARME = newData; ARME = newData; break;
+      case 'munitie': APP_DATA.MUNITIE = newData; MUNITIE = newData; break;
+      case 'componente': APP_DATA.COMP = newData; COMP = newData; break;
+      case 'masa': APP_DATA.MASA = newData; MASA = newData; break;
+      case 'locatii': APP_DATA.LOC = newData; LOC = newData; break;
+    }
+    
+    saveAppData();
+    renderDataList();
+    refreshAppUI();
+    showNotification('📦 Datele au fost reordonate!');
+  }
+  
+  draggedData = null;
+}
+
+function handleDataDragEnd(e) {
+  e.target.classList.remove('dragging');
 }
 
 function renderItemHTML(key, value) {
@@ -3989,6 +3957,7 @@ function exportData() {
     categories: categories,
     subcategories: subcategories,
     data: APP_DATA,
+    calculators: calculators,
     exportDate: new Date().toISOString(),
     exportedBy: currentUser?.username || 'Unknown'
   };
@@ -4038,12 +4007,18 @@ function handleImport(event) {
         saveAppData();
       }
       
+      if (imported.calculators) {
+        calculators = imported.calculators;
+        saveCalculators();
+      }
+      
       renderCategoriesList();
       renderSubcategoriesList();
       renderMainCategories();
       renderDynamicPanels();
       renderDataTabs();
       renderDataList();
+      renderCalculatorsList();
       refreshAppUI();
       
       showNotification('📥 Date importate cu succes!');
@@ -4235,7 +4210,7 @@ function cA() {
 function initComp() {
   if (!$('cT')) return;
   
-  let h = `<div class="sc"><div class="st cyan">⚙️ Componente Craft</div>
+  let h = `<div class="sc"><div class="st cyan">🔩 Componente Craft</div>
   <table><tr><th>Componenta</th><th>Materiale Necesare</th><th>Descriere</th></tr>`;
   
   Object.entries(COMP).forEach(([k, v]) => {
