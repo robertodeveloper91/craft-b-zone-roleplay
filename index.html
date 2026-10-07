@@ -4796,7 +4796,7 @@ function weaponCalculationV21(name,desiredQty){
   const components=[]; const raw={};
   Object.entries(a.piese||{}).forEach(([component,perBatch])=>{
     const need=(Number(perBatch)||0)*batches; const linked=!!COMP[component]; let compInfo=null;
-    if(linked){compInfo=componentRawTotalsV21(component,need);addTotalsV21(raw,compInfo.raw);}
+    if(linked){compInfo=componentRawTotalsV21(component,need);}
     components.push({component,perBatch:Number(perBatch)||0,need,linked,compInfo});
   });
   Object.entries(a.directMat||{}).forEach(([m,q])=>{const total=qtyNumber(q)*batches;if(total)raw[m]=(raw[m]||0)+total;});
