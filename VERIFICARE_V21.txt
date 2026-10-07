@@ -1,0 +1,18 @@
+CRAFT B-ZONE ROLEPLAY — V21 FIX COMPLET
+
+Corectii si implementari verificate:
+- OWNER Panel > Date foloseste corect containerul data-categories.
+- Droguri: Cocaina, Canabis, Tigari, fiecare cu vizibilitate si ordine proprie.
+- Arme: Pistol, Pistol Mitraliera (TEC GANG), Micro SMG, Mini SMG (GANG).
+- Componente redenumit Componente Arma.
+- Armele pot selecta componente din Componente Arma.
+- Reteta unei componente intra automat in totalul de materii prime al armei.
+- Rezultat/craft configurabil pentru arme si componente.
+- Materiale directe optionale la arma.
+- Vizibil/ascuns pentru categorii, subcategorii, droguri, arme si componente.
+- Reordonare drag & drop pentru categorii, subcategorii si date.
+- Mutare subcategorie in alta categorie din editor.
+- Migrare automata a datelor locale din versiunea anterioara fara resetarea configuratiei.
+- La stergerea unei componente folosita de arme apare avertizare si legatura este curatata.
+
+Versiune vizibila in site: v3.1 — V21 OWNER SYSTEM
