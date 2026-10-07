@@ -1202,6 +1202,14 @@ document.addEventListener('selectstart', function(e) {
 });
 
 document.addEventListener('dragstart', function(e) {
+  const allowed = e.target.closest?.(
+    '.category-item, .data-item, .cat-group-btn, .calculator-item, .sort-handle'
+  );
+
+  if (allowed) {
+    return true;
+  }
+
   e.preventDefault();
   return false;
 });
