@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>CRAFT ROLEPLAY — Calculator Profesional 2026</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔫</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -2089,6 +2089,412 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
   #subcategory-list .subcategory-meta-sep { display:none !important; }
   #subcategory-list .visibility-pill { width:max-content !important; }
 }
+
+/* =========================================================
+   V25 — WIDE DESKTOP + MOBILE FULL CALCULATORS
+   Pagina este mai lata pe PC, iar telefonul pastreaza
+   aceleasi informatii/calculatoare ca desktopul.
+   ========================================================= */
+
+/* Desktop / laptop lat */
+.ct{
+  width:min(96vw,1500px) !important;
+  max-width:1500px !important;
+  margin:0 auto !important;
+  padding:32px clamp(18px,2vw,34px) 38px !important;
+}
+
+/* Foloseste latimea noua, nu lasa categoriile stranse in centru */
+.cat-groups{
+  width:100% !important;
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr)) !important;
+  gap:12px !important;
+}
+
+.cat-group-btn{
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+}
+
+/* Taburile folosesc inteligent latimea disponibila */
+.tabs,
+.sub-tabs,
+.nested-tabs{
+  width:100% !important;
+  max-width:100% !important;
+}
+
+.tabs,
+.sub-tabs{
+  justify-content:stretch !important;
+}
+
+.tb{
+  flex:1 1 165px !important;
+  min-width:0 !important;
+  justify-content:center !important;
+  text-align:center !important;
+}
+
+/* Calculatoarele si cardurile pot folosi toata latimea */
+.cat-panel,
+.pn,
+.nested-system,
+.nested-panel,
+.weapon-calc-card,
+.component-calc-card,
+.sc,
+.sm,
+.recipe-total{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+
+.gr{
+  width:100%;
+}
+
+.g2{grid-template-columns:repeat(auto-fit,minmax(230px,1fr)) !important;}
+.g3{grid-template-columns:repeat(auto-fit,minmax(205px,1fr)) !important;}
+.g4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr)) !important;}
+
+.sg{
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr)) !important;
+}
+
+/* OWNER mai comod pe desktop, fara sa depaseasca ecranul */
+@media (min-width:1000px){
+  #admin-panel{
+    width:min(780px,calc(100vw - 40px)) !important;
+    max-width:min(780px,calc(100vw - 40px)) !important;
+  }
+}
+
+/* =========================================================
+   TABLETA + TELEFON — aceleasi informatii ca pe desktop
+   ========================================================= */
+@media (max-width:760px){
+
+  html,body{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+
+  .ct{
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:14px 8px 30px !important;
+  }
+
+  .hd{
+    padding:20px 0 18px !important;
+    margin-bottom:18px !important;
+  }
+
+  .hd .logo{
+    font-size:clamp(1.45rem,8vw,2.05rem) !important;
+    letter-spacing:2px !important;
+    overflow-wrap:anywhere;
+  }
+
+  .hd .sub{
+    font-size:.68rem !important;
+    letter-spacing:2px !important;
+    padding:0 4px;
+  }
+
+  .br{
+    width:100% !important;
+    gap:8px !important;
+    padding:10px 9px !important;
+    margin-bottom:14px !important;
+  }
+
+  /* CRAFT MAFIE / CRAFT LEGAL raman ambele vizibile */
+  .cat-groups{
+    width:100% !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+  }
+
+  .cat-group-btn{
+    min-width:0 !important;
+    max-width:none !important;
+    padding:13px 7px !important;
+    font-size:.76rem !important;
+    letter-spacing:.7px !important;
+  }
+
+  .cat-group-btn .cg-icon{
+    font-size:1.25rem !important;
+  }
+
+  .cat-group-btn .cg-sub{
+    font-size:.48rem !important;
+    letter-spacing:.4px !important;
+    overflow-wrap:anywhere;
+  }
+
+  /* Toate taburile raman pe telefon; doar se pun pe grila */
+  .tabs,
+  .sub-tabs,
+  .nested-tabs{
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:7px !important;
+    padding:8px !important;
+    overflow:visible !important;
+  }
+
+  .tb,
+  .nested-tab{
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    min-height:44px !important;
+    margin:0 !important;
+    padding:9px 6px !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+    text-align:center !important;
+    justify-content:center !important;
+    line-height:1.15 !important;
+    font-size:.78rem !important;
+  }
+
+  /* Card calculator */
+  .sc{
+    width:100% !important;
+    max-width:100% !important;
+    padding:15px 10px !important;
+    margin-bottom:12px !important;
+    border-radius:13px !important;
+
+    /* Tabelele late se pot glisa, nu se taie coloane */
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+  }
+
+  .st{
+    font-size:.76rem !important;
+    letter-spacing:1px !important;
+    line-height:1.35 !important;
+    overflow-wrap:anywhere;
+  }
+
+  /* Inputurile calculatorului: aceleasi controale, latime completa */
+  .ir{
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) !important;
+    align-items:stretch !important;
+    justify-items:stretch !important;
+    gap:11px !important;
+  }
+
+  .ig{
+    width:100% !important;
+    min-width:0 !important;
+    align-items:stretch !important;
+  }
+
+  .ig label{
+    width:100%;
+    text-align:center;
+    font-size:.66rem !important;
+    overflow-wrap:anywhere;
+  }
+
+  .ig input,
+  .ig select{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    padding:12px 10px !important;
+    font-size:.95rem !important;
+  }
+
+  /* Cardurile rezultat nu dispar; se rearanjeaza pe telefon */
+  .gr,
+  .g2,
+  .g3,
+  .g4{
+    width:100% !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+    margin:10px 0 !important;
+  }
+
+  .mc{
+    width:100% !important;
+    min-width:0 !important;
+    padding:14px 8px !important;
+    border-radius:11px !important;
+  }
+
+  .mc .ic{font-size:1.75rem !important;}
+  .mc .nm{
+    font-size:.58rem !important;
+    letter-spacing:.7px !important;
+    overflow-wrap:anywhere;
+  }
+  .mc .vl{
+    font-size:1.25rem !important;
+    overflow-wrap:anywhere;
+  }
+
+  .sm{
+    width:100% !important;
+    max-width:100% !important;
+    padding:14px 10px !important;
+    margin-top:12px !important;
+  }
+
+  .sm-t{
+    font-size:.76rem !important;
+    letter-spacing:1px !important;
+  }
+
+  .sg{
+    width:100% !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+  }
+
+  .si{
+    min-width:0 !important;
+    padding:12px 7px !important;
+  }
+
+  .si .lb{
+    font-size:.54rem !important;
+    letter-spacing:.6px !important;
+    overflow-wrap:anywhere;
+  }
+
+  .si .sv{
+    font-size:1rem !important;
+    overflow-wrap:anywhere;
+  }
+
+  .ib,
+  .rc{
+    width:100% !important;
+    max-width:100% !important;
+    padding:10px !important;
+    font-size:.7rem !important;
+    line-height:1.55 !important;
+    overflow-wrap:anywhere;
+  }
+
+  /* TOTAL GENERAL si celelalte rezultate raman integral vizibile */
+  .recipe-total{
+    width:100% !important;
+    max-width:100% !important;
+    padding:12px 10px !important;
+    overflow:visible !important;
+  }
+
+  .recipe-grid{
+    width:100% !important;
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:7px !important;
+  }
+
+  .recipe-chip{
+    width:100% !important;
+    min-width:0 !important;
+    gap:8px !important;
+    overflow-wrap:anywhere;
+  }
+
+  /* Butoane calculator */
+  .bs{
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:7px !important;
+  }
+
+  .bt{
+    width:100% !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:11px 7px !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere;
+  }
+
+  /* IMPORTANT: pastram TOATE coloanele tabelelor de pe desktop.
+     Pe telefon utilizatorul gliseaza orizontal in card. */
+  .sc table{
+    width:100% !important;
+    min-width:620px !important;
+    margin:10px 0 !important;
+    table-layout:auto !important;
+  }
+
+  .sc th,
+  .sc td{
+    padding:9px 8px !important;
+    font-size:.72rem !important;
+    white-space:normal !important;
+    vertical-align:top !important;
+  }
+
+  .sc th{
+    font-size:.61rem !important;
+  }
+
+  /* Nicio zona de calculator nu este ascunsa din cauza dimensiunii */
+  .cat-panel.on,
+  .pn.on,
+  .nested-panel.on{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+
+  .weapon-calc-card,
+  .component-calc-card,
+  .weapon-result,
+  .component-result{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+}
+
+/* Telefoane foarte inguste: toate informatiile raman, doar devin 1 coloana */
+@media (max-width:370px){
+  .cat-groups,
+  .tabs,
+  .sub-tabs,
+  .nested-tabs,
+  .gr,
+  .g2,
+  .g3,
+  .g4,
+  .sg,
+  .bs{
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+
+  .ct{
+    padding-left:6px !important;
+    padding-right:6px !important;
+  }
+}
+
 </style>
 <noscript><meta http-equiv="refresh" content="0;url=about:blank"></noscript>
 </head>
@@ -2251,7 +2657,7 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
   <header class="hd">
     <div class="logo">CRAFT ROLEPLAY</div>
     <div class="sub">Calculator Profesional — Gemini V</div>
-    <div class="version">v3.4 — V24 SUBCATEGORII CLEAN</div>
+    <div class="version">v3.5 — V25 WIDE + MOBILE FULL</div>
   </header>
 
   <div class="br" style="justify-content: space-between;">
