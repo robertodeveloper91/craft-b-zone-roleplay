@@ -936,6 +936,76 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
 .linked-component-row{display:grid;grid-template-columns:minmax(160px,1fr) 90px 42px;gap:8px;margin-bottom:8px}.linked-component-row select,.linked-component-row input{width:100%}
 @media(max-width:600px){.linked-component-row{grid-template-columns:1fr 80px 40px}.nested-tab{flex:1 1 calc(50% - 8px);text-align:center}}
 
+/* =========================================================
+   V22 - UNIVERSAL DRAG & DROP OWNER
+   ========================================================= */
+
+.sort-handle {
+  width: 30px;
+  min-width: 30px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  color: var(--dm);
+  font-size: 1.3rem;
+  font-weight: 900;
+  user-select: none !important;
+}
+
+.sort-handle:hover {
+  color: var(--a);
+  border-color: var(--a);
+  background: rgba(0,212,255,.08);
+}
+
+.sort-handle:active {
+  cursor: grabbing;
+}
+
+.sort-row {
+  transition: opacity .2s, transform .2s, border-color .2s;
+}
+
+.sort-row.dragging {
+  opacity: .35;
+  border: 1px dashed var(--a) !important;
+}
+
+.linked-component-row.sort-row {
+  grid-template-columns: 34px minmax(160px,1fr) 90px 42px;
+  align-items: center;
+}
+
+.field-row.sort-row {
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.subcategory-container {
+  min-height: 46px;
+  padding: 5px;
+  border-radius: 10px;
+  border: 1px dashed transparent;
+  transition: .2s;
+}
+
+.subcategory-container.drag-over {
+  border-color: var(--a);
+  background: rgba(0,212,255,.06);
+  box-shadow: inset 0 0 15px rgba(0,212,255,.06);
+}
+
+@media(max-width:600px) {
+  .linked-component-row.sort-row {
+    grid-template-columns: 32px 1fr 70px 38px;
+  }
+}
 </style>
 <noscript><meta http-equiv="refresh" content="0;url=about:blank"></noscript>
 </head>
