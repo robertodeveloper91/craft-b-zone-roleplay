@@ -1168,7 +1168,7 @@ input, textarea, select { -webkit-user-select: text !important; -moz-user-select
   <header class="hd">
     <div class="logo">CRAFT ROLEPLAY</div>
     <div class="sub">Calculator Profesional — Gemini V</div>
-    <div class="version">v3.1 — V21 OWNER SYSTEM</div>
+    <div class="version">v3.2 — V22 UNIVERSAL ORGANIZER</div>
   </header>
 
   <div class="br" style="justify-content: space-between;">
@@ -1273,7 +1273,7 @@ document.addEventListener('selectstart', function(e) {
 
 document.addEventListener('dragstart', function(e) {
   const allowed = e.target.closest?.(
-    '.category-item, .data-item, .cat-group-btn, .calculator-item, .sort-handle'
+    '.category-item, .data-item, .cat-group-btn, .calculator-item, .sort-handle, .cat-tab'
   );
 
   if (allowed) {
@@ -4753,37 +4753,126 @@ function handleDrop(e){
 function handleDragEnd(e){e.currentTarget.classList.remove('dragging');}
 
 function renderSubcategoriesList(){
-  const container=$('subcategory-list'); if(!container)return; container.innerHTML='';
+  const container=$('subcategory-list');
+  if(!container)return;
+  container.innerHTML='';
+
   categories.forEach(cat=>{
     const head=document.createElement('div');
-    head.style.cssText='padding:10px;background:rgba(255,0,0,.1);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--owner);';
-    head.innerHTML=`<b style="color:var(--owner)">${cat.icon} ${escapeHtml(cat.name)}</b>`; container.appendChild(head);
+    head.style.cssText='padding:10px;background:rgba(255,0,0,.1);border-radius:8px;margin-bottom:5px;margin-top:10px;border-left:3px solid var(--owner);';
+    head.innerHTML=`<b style="color:var(--owner)">${cat.icon} ${escapeHtml(cat.name)}</b>`;
+    container.appendChild(head);
+
+    const subContainer=document.createElement('div');
+    subContainer.className='subcategory-container';
+    subContainer.dataset.catId=cat.id;
+
     const subs=subcategories[cat.id]||[];
-    const subContainer=document.createElement('div'); subContainer.className='subcategory-container'; subContainer.dataset.catId=cat.id;
     subs.forEach((sub,index)=>{
-      const item=document.createElement('div'); item.className='category-item '+(sub.visible===false?'is-hidden':''); item.style.marginLeft='20px'; item.draggable=true;
-      item.dataset.catId=cat.id; item.dataset.subId=sub.id;
-      item.innerHTML=`<div class="category-info"><span style="cursor:grab;color:var(--dm);font-size:1.2rem">≡</span><span class="category-icon">${sub.icon}</span><div><div class="category-name">${escapeHtml(sub.name)}</div><div class="category-id">ID: ${escapeHtml(sub.id)} | Tip: ${escapeHtml(sub.type)} · <span class="visibility-pill ${sub.visible===false?'off':'on'}">${sub.visible===false?'🙈 ASCUNSA':'👁️ VIZIBILA'}</span></div></div></div><div class="data-item-actions"><button class="icon-btn visibility" onclick="toggleSubcategoryVisibility('${cat.id}',${index})">${sub.visible===false?'🙈':'👁️'}</button><button class="icon-btn edit" onclick="editSubcategory('${cat.id}',${index})">✏️</button><button class="icon-btn delete" onclick="deleteSubcategory('${cat.id}',${index})">🗑️</button></div>`;
-      item.addEventListener('dragstart',handleSubDragStart); item.addEventListener('dragover',handleSubDragOver); item.addEventListener('drop',handleSubDrop); item.addEventListener('dragend',handleSubDragEnd); subContainer.appendChild(item);
+      const item=document.createElement('div');
+      item.className='category-item '+(sub.visible===false?'is-hidden':'');
+      item.style.marginLeft='20px';
+      item.draggable=true;
+      item.dataset.catId=cat.id;
+      item.dataset.subId=sub.id;
+      item.innerHTML=`<div class="category-info"><span style="cursor:grab;color:var(--dm);font-size:1.2rem" title="Tine apasat si muta">≡</span><span class="category-icon">${sub.icon}</span><div><div class="category-name">${escapeHtml(sub.name)}</div><div class="category-id">ID: ${escapeHtml(sub.id)} | Tip: ${escapeHtml(sub.type)} · <span class="visibility-pill ${sub.visible===false?'off':'on'}">${sub.visible===false?'🙈 ASCUNSA':'👁️ VIZIBILA'}</span></div></div></div><div class="data-item-actions"><button class="icon-btn visibility" onclick="toggleSubcategoryVisibility('${cat.id}',${index})">${sub.visible===false?'🙈':'👁️'}</button><button class="icon-btn edit" onclick="editSubcategory('${cat.id}',${index})">✏️</button><button class="icon-btn delete" onclick="deleteSubcategory('${cat.id}',${index})">🗑️</button></div>`;
+      item.addEventListener('dragstart',handleSubDragStart);
+      item.addEventListener('dragend',handleSubDragEnd);
+      subContainer.appendChild(item);
     });
-    if(!subs.length) subContainer.innerHTML='<div style="padding:8px;color:var(--dm);font-size:.8rem;font-style:italic">Nu exista subcategorii</div>';
+
+    if(!subs.length){
+      const empty=document.createElement('div');
+      empty.className='empty-subcategory';
+      empty.style.cssText='padding:12px;color:var(--dm);font-size:.8rem;font-style:italic;text-align:center;';
+      empty.textContent='Trage aici o subcategorie';
+      subContainer.appendChild(empty);
+    }
+
+    subContainer.addEventListener('dragover',handleSubContainerDragOverV22);
+    subContainer.addEventListener('drop',handleSubContainerDropV22);
     container.appendChild(subContainer);
   });
 }
+
 let draggedSubV21=null;
+
 function handleSubDragStart(e){
-  const item=e.currentTarget; item.classList.add('dragging'); draggedSubV21={catId:item.dataset.catId,subId:item.dataset.subId}; e.dataTransfer.effectAllowed='move';
+  const item=e.currentTarget;
+  item.classList.add('dragging');
+  draggedSubV21={catId:item.dataset.catId,subId:item.dataset.subId};
+  if(e.dataTransfer){
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',item.dataset.subId||'');
+  }
 }
-function handleSubDragOver(e){
-  e.preventDefault(); const container=e.currentTarget.parentElement; if(!draggedSubV21 || draggedSubV21.catId!==container.dataset.catId)return;
-  const dragging=container.querySelector('.category-item.dragging'); if(!dragging)return; const after=getAfterElementV21(container,e.clientY,'.category-item'); after?container.insertBefore(dragging,after):container.appendChild(dragging);
+
+function handleSubContainerDragOverV22(e){
+  if(!draggedSubV21)return;
+  e.preventDefault();
+  const container=e.currentTarget;
+  container.classList.add('drag-over');
+  if(e.dataTransfer)e.dataTransfer.dropEffect='move';
+
+  const empty=container.querySelector('.empty-subcategory');
+  if(empty)empty.remove();
+
+  const dragging=document.querySelector('.subcategory-container .category-item.dragging');
+  if(!dragging)return;
+  const after=getAfterElementV21(container,e.clientY,'.category-item');
+  after?container.insertBefore(dragging,after):container.appendChild(dragging);
 }
-function handleSubDrop(e){
-  e.preventDefault(); const container=e.currentTarget.parentElement; const catId=container.dataset.catId; if(!draggedSubV21 || draggedSubV21.catId!==catId)return;
-  const order=[...container.querySelectorAll('.category-item')].map(el=>el.dataset.subId).filter(Boolean); const map=new Map((subcategories[catId]||[]).map(x=>[x.id,x])); subcategories[catId]=order.map(id=>map.get(id)).filter(Boolean);
-  saveSubcategories(); renderSubcategoriesList(); renderDynamicPanels(); showNotification('📂 Subcategoriile au fost reordonate!'); draggedSubV21=null;
+
+function handleSubContainerDropV22(e){
+  e.preventDefault();
+  const container=e.currentTarget;
+  container.classList.remove('drag-over');
+  if(!draggedSubV21)return;
+
+  const sourceCat=draggedSubV21.catId;
+  const targetCat=container.dataset.catId;
+  const subId=draggedSubV21.subId;
+  const sourceArray=subcategories[sourceCat]||[];
+  const sourceIndex=sourceArray.findIndex(x=>x.id===subId);
+  if(sourceIndex===-1){
+    draggedSubV21=null;
+    renderSubcategoriesList();
+    return;
+  }
+
+  if(sourceCat!==targetCat && (subcategories[targetCat]||[]).some(x=>x.id===subId)){
+    showNotification('⚠️ Categoria destinatie are deja o subcategorie cu acelasi ID.');
+    draggedSubV21=null;
+    renderSubcategoriesList();
+    return;
+  }
+
+  const movedItem=sourceArray.splice(sourceIndex,1)[0];
+  if(!subcategories[targetCat])subcategories[targetCat]=[];
+  const destinationArray=targetCat===sourceCat?sourceArray:subcategories[targetCat];
+  const map=new Map(destinationArray.map(x=>[x.id,x]));
+  map.set(movedItem.id,movedItem);
+
+  const order=[...container.querySelectorAll('.category-item')].map(el=>el.dataset.subId).filter(Boolean);
+  subcategories[targetCat]=order.map(id=>map.get(id)).filter(Boolean);
+  if(sourceCat!==targetCat)subcategories[sourceCat]=sourceArray;
+
+  saveSubcategories();
+  draggedSubV21=null;
+  renderSubcategoriesList();
+  renderDynamicPanels();
+  renderMainCategories();
+  showNotification(sourceCat===targetCat?'↕️ Subcategoriile au fost reordonate!':'↔️ Subcategoria a fost mutata in alta categorie!');
 }
-function handleSubDragEnd(e){e.currentTarget.classList.remove('dragging');draggedSubV21=null;}
+
+function handleSubDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.subcategory-container').forEach(x=>x.classList.remove('drag-over'));
+  if(draggedSubV21){
+    draggedSubV21=null;
+    renderSubcategoriesList();
+  }
+}
 
 function openCategoryModal(editIndex=null){
   modalMode='category'; editingItem=editIndex; const cat=editIndex!==null?categories[editIndex]:null;
@@ -4946,12 +5035,69 @@ function setDataObjectV21(type,obj){
     case 'locatii': LOC=obj;APP_DATA.LOC=obj;break;
   }
 }
+const V22_OWNER_DATA_TAB_ORDER_KEY='craft_v22_owner_data_tab_order';
+const V22_OWNER_DATA_TAB_LABELS={
+  droguri:'💊 Droguri',
+  arme:'🔫 Arme',
+  componente:'⚙️ Componente Arma',
+  munitie:'🎯 Munitie',
+  masa:'🔨 Masa Craft',
+  locatii:'📍 Locatii'
+};
+function getOwnerDataTabOrderV22(){
+  const defaults=Object.keys(V22_OWNER_DATA_TAB_LABELS);
+  let stored=[];
+  try{stored=JSON.parse(localStorage.getItem(V22_OWNER_DATA_TAB_ORDER_KEY)||'[]');}catch(e){stored=[];}
+  const valid=stored.filter(id=>defaults.includes(id));
+  defaults.forEach(id=>{if(!valid.includes(id))valid.push(id);});
+  return valid;
+}
+function saveOwnerDataTabOrderV22(order){
+  localStorage.setItem(V22_OWNER_DATA_TAB_ORDER_KEY,JSON.stringify(order));
+}
+function getAfterDataTabV22(container,x){
+  const items=[...container.querySelectorAll('.cat-tab:not(.dragging)')];
+  return items.reduce((closest,child)=>{
+    const box=child.getBoundingClientRect();
+    const offset=x-box.left-box.width/2;
+    return offset<0&&offset>closest.offset?{offset,element:child}:closest;
+  },{offset:Number.NEGATIVE_INFINITY,element:null}).element;
+}
 function renderDataTabs(){
-  const container=$('data-categories'); if(!container)return; container.innerHTML='';
-  [['droguri','💊 Droguri'],['arme','🔫 Arme'],['componente','⚙️ Componente Arma'],['munitie','🎯 Munitie'],['masa','🔨 Masa Craft'],['locatii','📍 Locatii']].forEach(([id,label])=>{
-    const tab=document.createElement('div'); tab.className='cat-tab '+(id===currentDataCategory?'active':''); tab.textContent=label; tab.onclick=()=>{currentDataCategory=id;renderDataTabs();renderDataList();}; container.appendChild(tab);
+  const container=$('data-categories');
+  if(!container)return;
+  container.innerHTML='';
+  getOwnerDataTabOrderV22().forEach(id=>{
+    const tab=document.createElement('div');
+    tab.className='cat-tab '+(id===currentDataCategory?'active':'');
+    tab.textContent=V22_OWNER_DATA_TAB_LABELS[id];
+    tab.dataset.dataType=id;
+    tab.draggable=true;
+    tab.title='Tine apasat si muta pentru a schimba ordinea';
+    tab.onclick=()=>{currentDataCategory=id;renderDataTabs();renderDataList();};
+    tab.addEventListener('dragstart',e=>{
+      tab.classList.add('dragging');
+      if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id);}
+    });
+    tab.addEventListener('dragover',e=>{
+      e.preventDefault();
+      const dragging=container.querySelector('.cat-tab.dragging');
+      if(!dragging)return;
+      const after=getAfterDataTabV22(container,e.clientX);
+      after?container.insertBefore(dragging,after):container.appendChild(dragging);
+    });
+    tab.addEventListener('drop',e=>{
+      e.preventDefault();
+      const order=[...container.querySelectorAll('.cat-tab')].map(x=>x.dataset.dataType).filter(Boolean);
+      saveOwnerDataTabOrderV22(order);
+      container.querySelectorAll('.cat-tab').forEach(x=>x.classList.remove('dragging'));
+      showNotification('↔️ Ordinea taburilor OWNER → Date a fost salvata!');
+    });
+    tab.addEventListener('dragend',()=>tab.classList.remove('dragging'));
+    container.appendChild(tab);
   });
 }
+
 const _renderItemHTMLV19=renderItemHTML;
 renderItemHTML=function(key,value){
   const safeKey=key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -5058,7 +5204,7 @@ generateFormFields=function(editKey=null){
   }
   if(currentDataCategory==='arme'){
     const a=editKey?ARME[editKey]:null; const comps=Object.keys(COMP); const compRows=a?Object.entries(a.piese||{}):[]; const directRows=a?Object.entries(a.directMat||{}):[];
-    return `<div class="form-group"><label>Nume / Identificator</label><input id="field-name" value="${escapeHtml(editKey||'')}" ${editKey?'readonly':''} placeholder="Ex: Pistol"></div><div class="form-row"><div class="form-group"><label>Categorie / Tip</label><input id="field-cat" value="${escapeHtml(a?.cat||'')}" placeholder="Ex: Pistol, SMG"></div><div class="form-group"><label>Tip Munitie</label><select id="field-mun">${Object.keys(MUNITIE).map(m=>`<option value="${escapeHtml(m)}" ${a?.mun===m?'selected':''}>${escapeHtml(m)}</option>`).join('')}</select></div></div><div class="form-row"><div class="form-group"><label>Rezultat arme / craft</label><input type="number" id="field-result-qty" min="1" value="${positiveInt(a?.resultQty,1)}"></div><div class="form-group"><label>Afisare pe site</label><select id="field-visible"><option value="true" ${a?.visible!==false?'selected':''}>👁️ Vizibila</option><option value="false" ${a?.visible===false?'selected':''}>🙈 Ascunsa</option></select></div></div><div class="form-group"><label>Descriere / Nota</label><textarea id="field-desc" placeholder="Detalii pe care vrei sa le vada membrii">${escapeHtml(a?.desc||'')}</textarea></div><div class="dynamic-fields"><h4>🔗 Componente Arma <button type="button" onclick="addWeaponComponentField()" style="padding:4px 8px;background:var(--g);border:0;border-radius:4px">+ Adauga</button></h4><div class="owner-hint">Selectezi componentele create la <b>Componente Arma</b>. Reteta fiecarei componente este inclusa automat in calculul armei.</div><div id="piese-container">${compRows.map(([k,v])=>weaponComponentRow(k,v,comps)).join('')}</div></div><div class="dynamic-fields"><h4>🧱 Materiale directe ale armei <button type="button" onclick="addMaterialFieldV21('direct-materiale-container','direct-mat')" style="padding:4px 8px;background:var(--a);border:0;border-radius:4px">+ Adauga</button></h4><div class="owner-hint">Optional: materiale care intra direct in craftul armei, pe langa componente.</div><div id="direct-materiale-container">${directRows.map(([k,v])=>materialRowV21(k,v,'direct-mat')).join('')}</div></div>`;
+    return `<div class="form-group"><label>Nume / Identificator</label><input id="field-name" value="${escapeHtml(editKey||'')}" ${editKey?'readonly':''} placeholder="Ex: Pistol"></div><div class="form-row"><div class="form-group"><label>Categorie / Tip</label><input id="field-cat" value="${escapeHtml(a?.cat||'')}" placeholder="Ex: Pistol, SMG"></div><div class="form-group"><label>Tip Munitie</label><select id="field-mun">${Object.keys(MUNITIE).map(m=>`<option value="${escapeHtml(m)}" ${a?.mun===m?'selected':''}>${escapeHtml(m)}</option>`).join('')}</select></div></div><div class="form-row"><div class="form-group"><label>Rezultat arme / craft</label><input type="number" id="field-result-qty" min="1" value="${positiveInt(a?.resultQty,1)}"></div><div class="form-group"><label>Afisare pe site</label><select id="field-visible"><option value="true" ${a?.visible!==false?'selected':''}>👁️ Vizibila</option><option value="false" ${a?.visible===false?'selected':''}>🙈 Ascunsa</option></select></div></div><div class="form-group"><label>Descriere / Nota</label><textarea id="field-desc" placeholder="Detalii pe care vrei sa le vada membrii">${escapeHtml(a?.desc||'')}</textarea></div><div class="dynamic-fields"><h4>🔗 Componente Arma <button type="button" onclick="addWeaponComponentField()" style="padding:4px 8px;background:var(--g);border:0;border-radius:4px">+ Adauga</button></h4><div class="owner-hint">Selectezi componentele create la <b>Componente Arma</b>. Componentele sunt calculate separat; <b>TOTAL GENERAL MATERII PRIME</b> foloseste doar Materialele directe ale armei.</div><div id="piese-container">${compRows.map(([k,v])=>weaponComponentRow(k,v,comps)).join('')}</div></div><div class="dynamic-fields"><h4>🧱 Materiale directe ale armei <button type="button" onclick="addMaterialFieldV21('direct-materiale-container','direct-mat')" style="padding:4px 8px;background:var(--a);border:0;border-radius:4px">+ Adauga</button></h4><div class="owner-hint">Acestea sunt singurele materiale incluse in <b>📊 TOTAL GENERAL MATERII PRIME</b>.</div><div id="direct-materiale-container">${directRows.map(([k,v])=>materialRowV21(k,v,'direct-mat')).join('')}</div></div>`;
   }
   if(currentDataCategory==='componente'){
     const c=editKey?COMP[editKey]:null; return `<div class="form-group"><label>Nume Componenta</label><input id="field-name" value="${escapeHtml(editKey||'')}" ${editKey?'readonly':''} placeholder="Ex: Teava Pistol"></div><div class="form-row"><div class="form-group"><label>Rezultat componente / craft</label><input type="number" id="field-result-qty" min="1" value="${positiveInt(c?.resultQty,1)}"></div><div class="form-group"><label>Afisare pe site</label><select id="field-visible"><option value="true" ${c?.visible!==false?'selected':''}>👁️ Vizibila</option><option value="false" ${c?.visible===false?'selected':''}>🙈 Ascunsa</option></select></div></div><div class="form-group"><label>Descriere</label><textarea id="field-desc">${escapeHtml(c?.desc||'')}</textarea></div><div class="dynamic-fields"><h4>Materiale Necesare <button type="button" onclick="addMaterialFieldV21('materiale-container','mat')" style="padding:4px 8px;background:var(--g);border:0;border-radius:4px">+ Adauga</button></h4><div id="materiale-container">${c?Object.entries(c.mat||{}).map(([k,v])=>materialRowV21(k,v,'mat')).join(''):''}</div></div>`;
