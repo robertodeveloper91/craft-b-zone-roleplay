@@ -4980,11 +4980,75 @@ function toggleDataVisibility(type,encoded){
 }
 
 const _generateFormFieldsV19=generateFormFields;
-function weaponComponentRow(name='',qty=1,comps=Object.keys(COMP)){
-  return `<div class="linked-component-row"><select class="piesa-name"><option value="">— selecteaza componenta —</option>${comps.map(c=>`<option value="${escapeHtml(c)}" ${c===name?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select><input type="number" min="1" value="${Number(qty)||1}" class="piesa-qty"><button type="button" onclick="this.parentElement.remove()">✕</button></div>`;
+function weaponComponentRow(name='', qty=1, comps=Object.keys(COMP)){
+  return `
+    <div class="linked-component-row sort-row">
+
+      <span
+        class="sort-handle"
+        draggable="true"
+        title="Tine apasat si muta"
+      >≡</span>
+
+      <select class="piesa-name">
+        <option value="">— selecteaza componenta —</option>
+        ${comps.map(c => `
+          <option
+            value="${escapeHtml(c)}"
+            ${c === name ? 'selected' : ''}
+          >
+            ${escapeHtml(c)}
+          </option>
+        `).join('')}
+      </select>
+
+      <input
+        type="number"
+        min="1"
+        value="${Number(qty) || 1}"
+        class="piesa-qty"
+      >
+
+      <button
+        type="button"
+        onclick="this.parentElement.remove()"
+      >✕</button>
+
+    </div>
+  `;
 }
-function materialRowV21(name='',qty=1,clsPrefix='mat'){
-  return `<div class="field-row"><input class="${clsPrefix}-name" value="${escapeHtml(name)}" placeholder="Material"><input type="number" min="0" step="1" class="${clsPrefix}-qty" value="${qtyNumber(qty)}" style="width:100px"><button type="button" onclick="this.parentElement.remove()">✕</button></div>`;
+function materialRowV21(name='', qty=1, clsPrefix='mat'){
+  return `
+    <div class="field-row sort-row">
+
+      <span
+        class="sort-handle"
+        draggable="true"
+        title="Tine apasat si muta"
+      >≡</span>
+
+      <input
+        class="${clsPrefix}-name"
+        value="${escapeHtml(name)}"
+        placeholder="Material"
+      >
+
+      <input
+        type="number"
+        min="0"
+        step="1"
+        class="${clsPrefix}-qty"
+        value="${qtyNumber(qty)}"
+        style="width:100px"
+      >
+
+      <button
+        type="button"
+        onclick="this.parentElement.remove()"
+      >✕</button>
+
+    </div>
+  `;
 }
 function addWeaponComponentField(){const c=$('piese-container');if(c)c.insertAdjacentHTML('beforeend',weaponComponentRow());}
 function addMaterialFieldV21(containerId='materiale-container',prefix='mat'){const c=$(containerId);if(c)c.insertAdjacentHTML('beforeend',materialRowV21('',1,prefix));}
@@ -5042,6 +5106,122 @@ getCategoryLabel=function(){
   return _getCategoryLabelV19();
 };
 
+/* =========================================================
+   V22 - SORTARE COMPONENTE + MATERIALE IN MODAL
+   ========================================================= */
+
+let draggedSortRowV22 = null;
+
+document.addEventListener('dragstart', function(e) {
+
+  const handle = e.target.closest('.sort-handle');
+
+  if (!handle) return;
+
+  const row = handle.closest('.sort-row');
+
+  if (!row) return;
+
+  draggedSortRowV22 = row;
+
+  row.classList.add('dragging');
+
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'owner-sort-row');
+  }
+
+});
+
+
+document.addEventListener('dragover', function(e) {
+
+  if (!draggedSortRowV22) return;
+
+  const container = e.target.closest(
+    '#piese-container, #direct-materiale-container, #materiale-container'
+  );
+
+  if (!container) return;
+
+  e.preventDefault();
+
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  const rows = [
+    ...container.querySelectorAll('.sort-row:not(.dragging)')
+  ];
+
+  let afterElement = null;
+  let closestOffset = Number.NEGATIVE_INFINITY;
+
+  rows.forEach(row => {
+
+    const box = row.getBoundingClientRect();
+
+    const offset =
+      e.clientY -
+      box.top -
+      box.height / 2;
+
+    if (
+      offset < 0 &&
+      offset > closestOffset
+    ) {
+      closestOffset = offset;
+      afterElement = row;
+    }
+
+  });
+
+  if (afterElement) {
+
+    container.insertBefore(
+      draggedSortRowV22,
+      afterElement
+    );
+
+  } else {
+
+    container.appendChild(
+      draggedSortRowV22
+    );
+
+  }
+
+});
+
+
+document.addEventListener('drop', function(e) {
+
+  if (!draggedSortRowV22) return;
+
+  const container = e.target.closest(
+    '#piese-container, #direct-materiale-container, #materiale-container'
+  );
+
+  if (!container) return;
+
+  e.preventDefault();
+
+  draggedSortRowV22.classList.remove('dragging');
+
+  draggedSortRowV22 = null;
+
+});
+
+
+document.addEventListener('dragend', function() {
+
+  if (draggedSortRowV22) {
+    draggedSortRowV22.classList.remove('dragging');
+  }
+
+  draggedSortRowV22 = null;
+
+});
 /* ═══════════════════════════════════════════════════════════════
    ███  INITIALIZARE  ███
    ═══════════════════════════════════════════════════════════════ */
